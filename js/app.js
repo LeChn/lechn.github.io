@@ -357,6 +357,183 @@
 		]
 	});
 
+	/* Bounded top-K buffer -------------------------------------------------
+	   Ranked items stream in faster than they can be sorted. Admit into an
+	   unordered buffer of m*K; when it fills, partition once (quickselect,
+	   average O(mK)), keep the best K, and overwrite the discarded tail.
+	   The boundary element left by the partition then rejects weaker items
+	   in O(1). Amortized partition work is m/(m-1) per admitted item. */
+	function makeTopK(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var K = cfg.k, M = cfg.m, st = null, timer = null;
+
+		function build() {
+			var rnd = rng(cfg.seed), n = K * 6, stream = [];
+			for (var i = 0; i < n; i++) { stream.push({ id: i + 1, sc: Math.floor(rnd() * 99) + 1 }); }
+			st = {
+				stream: stream, idx: 0, buf: [], thr: null, done: false,
+				seen: 0, adm: 0, rej: 0, comp: 0, hot: -1, cut: false
+			};
+		}
+
+		function compact() {
+			// Stands in for quickselect: average O(mK), run once per (m-1)K admits.
+			st.buf.sort(function (a, b) { return b.sc - a.sc; });
+			st.buf = st.buf.slice(0, K);
+			st.thr = st.buf[K - 1].sc; // boundary element: the O(1) admission test
+			st.comp++;
+			st.cut = true;
+		}
+
+		function step() {
+			if (!st || st.done) { return false; }
+			st.cut = false;
+			if (st.idx >= st.stream.length) {
+				if (st.buf.length > K) { compact(); }
+				st.done = true;
+				st.hot = -1;
+				return true;
+			}
+			var it = st.stream[st.idx++];
+			st.seen++;
+			if (st.thr !== null && it.sc <= st.thr) {
+				st.rej++;
+				st.hot = -1;
+				return true;
+			}
+			st.buf.push(it);
+			st.adm++;
+			st.hot = st.buf.length - 1;
+			if (st.buf.length >= M * K) { compact(); st.hot = -1; }
+			return true;
+		}
+
+		function render() {
+			var slots = M * K, html = '';
+			for (var i = 0; i < slots; i++) {
+				var it = st.buf[i];
+				if (!it) { html += '<span class="slot">·</span>'; continue; }
+				var cls = 'slot fill';
+				if (st.comp > 0 && i < K) { cls = 'slot keep'; }
+				if (st.cut && i < K) { cls = 'slot keep'; }
+				if (i === st.hot) { cls += ' hot'; }
+				html += '<span class="' + cls + '">' + it.sc + '</span>';
+			}
+			q('.tkslots').innerHTML = html;
+			q('.tkCap').textContent = slots;
+			q('.tkPhase').textContent = st.done ? 'done'
+				: st.cut ? 'partitioned → kept ' + K
+					: st.thr !== null ? 'filling · threshold active' : 'filling';
+			q('.tkThr').textContent = st.thr === null ? '—' : st.thr;
+			q('.tkPos').textContent = st.idx + ' / ' + st.stream.length;
+			q('.rSeen').textContent = st.seen;
+			q('.rAdm').textContent = st.adm;
+			q('.rRej').textContent = st.rej;
+			q('.rComp').textContent = st.comp;
+			q('.rRate').textContent = st.seen ? Math.round(st.rej / st.seen * 100) + '%' : '—';
+		}
+
+		function stop() {
+			if (timer) { clearInterval(timer); timer = null; }
+			q('.play').textContent = 'Play';
+			q('.play').classList.remove('on');
+		}
+
+		function reset() { stop(); build(); render(); }
+
+		q('.kIn').addEventListener('input', function (e) {
+			K = parseInt(e.target.value, 10); q('.kOut').textContent = K; reset();
+		});
+		q('.mIn').addEventListener('input', function (e) {
+			M = parseInt(e.target.value, 10); q('.mOut').textContent = M; reset();
+		});
+		q('.step').addEventListener('click', function () { stop(); step(); render(); });
+		q('.reset').addEventListener('click', reset);
+		q('.play').addEventListener('click', function () {
+			if (timer) { stop(); return; }
+			if (st.done) { build(); }
+			q('.play').textContent = 'Pause';
+			q('.play').classList.add('on');
+			timer = setInterval(function () {
+				step(); render();
+				if (st.done) { stop(); }
+			}, 90);
+		});
+
+		reset();
+	}
+
+	makeTopK({ root: '#w-topk', k: 8, m: 2, seed: 5 });
+
+	/* Fused embedding kernel ----------------------------------------------
+	   Unfused, scoring costs three passes over the embedding data: read the
+	   table, write the gathered tensor, read it back. Fused, the gathered
+	   values never leave registers, so only the table read remains. Counts
+	   below are derived from shapes, not measured. */
+	function makeFuse(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var NS = [1024, 2048, 4096, 8192, 16384, 32768, 65536];
+		var DS = [32, 64, 128, 256];
+		var PS = [{ nm: 'fp32', b: 4 }, { nm: 'fp16', b: 2 }, { nm: 'int8', b: 1 }];
+		var BALANCE = 10; // FLOP/byte below which a kernel is bandwidth-bound
+
+		function bytes(v) {
+			if (v >= 1073741824) { return (v / 1073741824).toFixed(2) + ' GB'; }
+			if (v >= 1048576) { return (v / 1048576).toFixed(1) + ' MB'; }
+			if (v >= 1024) { return (v / 1024).toFixed(0) + ' KB'; }
+			return v + ' B';
+		}
+
+		function num(v) { return v >= 1024 ? (v / 1024) + 'K' : String(v); }
+
+		function render() {
+			var N = NS[+q('.nIn').value], D = DS[+q('.dIn').value], P = PS[+q('.pIn').value];
+			q('.nOut').textContent = num(N);
+			q('.dOut').textContent = D;
+			q('.pOut').textContent = P.nm;
+
+			var emb = N * D * P.b;   // one pass over the gathered embeddings
+			var out = N * 4;         // fp32 scores
+			var unfused = emb * 3 + out;
+			var fused = emb + out;
+
+			var bars = root.querySelectorAll('.fbtrack');
+			var w = function (v) { return (v / unfused * 100) + '%'; };
+			var u = bars[0].children;
+			u[0].style.width = w(emb);
+			u[1].style.width = w(emb);
+			u[2].style.width = w(emb);
+			u[3].style.width = w(out);
+			var f = bars[1].children;
+			f[0].style.width = w(emb);
+			f[1].style.width = w(out);
+
+			var flops = 2 * N * D;   // one multiply-add per element
+			var ai = flops / fused;
+
+			q('.fUn').textContent = bytes(unfused);
+			q('.fFu').textContent = bytes(fused);
+			q('.rUn').textContent = bytes(unfused);
+			q('.rFu').textContent = bytes(fused);
+			q('.rCut').textContent = (unfused / fused).toFixed(2) + '×';
+			q('.rAi').textContent = ai.toFixed(2);
+			var el = q('.rBound');
+			el.textContent = ai < BALANCE ? 'bandwidth' : 'compute';
+			el.className = 'k rBound ' + (ai < BALANCE ? 'over' : 'under');
+		}
+
+		['.nIn', '.dIn', '.pIn'].forEach(function (s) {
+			q(s).addEventListener('input', render);
+		});
+		render();
+	}
+
+	makeFuse({ root: '#w-fuse' });
+
 	/* Selected work ------------------------------------------------------ */
 	$$('.wtoggle').forEach(function (t) {
 		t.addEventListener('click', function () {

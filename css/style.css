@@ -10,6 +10,7 @@
 	--sa: #2f6df6;
 	--sb: #0f766e;
 	--sc: #b45309;
+	--sd: #7c3aed;
 	--mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -25,6 +26,7 @@ html[data-theme='dark'] {
 	--sa: #5b8dff;
 	--sb: #2dd4bf;
 	--sc: #fbbf24;
+	--sd: #c4b5fd;
 }
 
 * {
@@ -622,6 +624,137 @@ figcaption strong {
 
 .wactions label {
 	min-width: 130px;
+}
+
+/* Top-K buffer */
+.tkhead,
+.tkbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+}
+
+.tkhead {
+	margin-bottom: 10px;
+}
+
+.tkbar {
+	margin-top: 12px;
+}
+
+.tkbar strong {
+	color: var(--ink);
+	font-weight: 500;
+}
+
+.tkPhase {
+	color: var(--accent);
+}
+
+.tkslots {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.slot {
+	width: 38px;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--mono);
+	font-size: 10px;
+	border-radius: 4px;
+	border: 1px dashed var(--line);
+	color: var(--muted);
+	background: var(--bg);
+}
+
+.slot.fill {
+	border-style: solid;
+	border-color: var(--line);
+	color: var(--ink);
+}
+
+.slot.keep {
+	border-color: var(--accent);
+	color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.slot.hot {
+	outline: 2px solid var(--ink);
+	outline-offset: 1px;
+}
+
+.slot.cut {
+	border-color: var(--warn);
+	color: var(--warn);
+	opacity: 0.5;
+}
+
+/* Fused kernel */
+.fbar {
+	margin-bottom: 16px;
+}
+
+.fbhead {
+	display: flex;
+	justify-content: space-between;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+	margin-bottom: 6px;
+}
+
+.fbhead span:last-child {
+	color: var(--ink);
+}
+
+.fbtrack {
+	display: flex;
+	height: 26px;
+	border-radius: 5px;
+	overflow: hidden;
+	background: var(--bg);
+	border: 1px solid var(--line);
+}
+
+.seg {
+	display: block;
+	height: 100%;
+	transition: width 0.2s ease;
+}
+
+.seg.s1,
+.sw.s1 {
+	background: var(--sa);
+}
+
+.seg.s2,
+.sw.s2 {
+	background: var(--warn);
+}
+
+.seg.s3,
+.sw.s3 {
+	background: var(--sd);
+}
+
+.seg.s4,
+.sw.s4 {
+	background: var(--sb);
+}
+
+.sw {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
 }
 
 /* Selected work */

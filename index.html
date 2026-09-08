@@ -231,6 +231,96 @@
 		</section>
 
 		<section>
+			<h2>Bounded Top-K Buffer</h2>
+			<p class="note">Ranked candidates arrive faster than the latency budget allows sorting. Keep the best K
+				— but pay neither a full sort nor a heap update per item. Admit into a buffer of m·K; when it
+				fills, partition once and keep the best K. The discarded half is overwritten, never reallocated.
+			</p>
+			<div class="demo" id="w-topk">
+				<div class="tkhead">
+					<span>buffer · <span class="tkCap">16</span> slots</span>
+					<span class="tkPhase">filling</span>
+				</div>
+				<div class="tkslots"></div>
+				<div class="tkbar">
+					<span>threshold <strong class="tkThr">—</strong></span>
+					<span>stream <strong class="tkPos">0 / 0</strong></span>
+				</div>
+				<div class="wctrls">
+					<label>capacity K <output class="kOut">8</output>
+						<input type="range" class="kIn" min="4" max="16" value="8" aria-label="Capacity K" />
+					</label>
+					<label>multiplier m <output class="mOut">2</output>
+						<input type="range" class="mIn" min="2" max="4" value="2" aria-label="Buffer multiplier" />
+					</label>
+				</div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rSeen">0</span><span class="l">seen</span></div>
+					<div><span class="k rAdm">0</span><span class="l">admitted</span></div>
+					<div><span class="k rRej">0</span><span class="l">fast-rejected</span></div>
+					<div><span class="k rComp">0</span><span class="l">partitions</span></div>
+					<div><span class="k rRate">—</span><span class="l">rejected in O(1)</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Raising m buys fewer partitions with linearly more memory. Worst case the
+				partition work amortizes to m/(m-1) per admitted item — 2.00 at m=2, 1.50 at m=3. In practice the
+				boundary suppresses admissions so hard that admits grow like K·ln(N/K), and partitions are rarer
+				still. Average O(N) overall, against O(N log K) for a heap.</p>
+		</section>
+
+		<section>
+			<h2>Fused Embedding Kernel</h2>
+			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As
+				two kernels, the gathered embeddings get written to memory and immediately read back. Fuse lookup
+				and reduction into one pass and the intermediate never exists. The arithmetic is trivial — the
+				whole problem is memory traffic.</p>
+			<div class="demo" id="w-fuse">
+				<div class="fbar">
+					<div class="fbhead"><span>unfused · two kernels</span><span class="fUn">—</span></div>
+					<div class="fbtrack"><span class="seg s1"></span><span class="seg s2"></span><span
+							class="seg s3"></span><span class="seg s4"></span></div>
+				</div>
+				<div class="fbar">
+					<div class="fbhead"><span>fused · one pass</span><span class="fFu">—</span></div>
+					<div class="fbtrack"><span class="seg s1"></span><span class="seg s4"></span></div>
+				</div>
+				<div class="legend">
+					<span><span class="sw s1"></span> table read</span>
+					<span><span class="sw s2"></span> intermediate write</span>
+					<span><span class="sw s3"></span> intermediate read</span>
+					<span><span class="sw s4"></span> scores out</span>
+				</div>
+				<div class="wctrls">
+					<label>candidates <output class="nOut">16K</output>
+						<input type="range" class="nIn" min="0" max="6" value="4" aria-label="Candidates per request" />
+					</label>
+					<label>embedding dim <output class="dOut">128</output>
+						<input type="range" class="dIn" min="0" max="3" value="2" aria-label="Embedding dimension" />
+					</label>
+					<label>precision <output class="pOut">fp16</output>
+						<input type="range" class="pIn" min="0" max="2" value="1" aria-label="Precision" />
+					</label>
+				</div>
+				<div class="readout five">
+					<div><span class="k rUn">—</span><span class="l">unfused traffic</span></div>
+					<div><span class="k rFu">—</span><span class="l">fused traffic</span></div>
+					<div><span class="k rCut">—</span><span class="l">traffic removed</span></div>
+					<div><span class="k rAi">—</span><span class="l">FLOP / byte</span></div>
+					<div><span class="k rBound">—</span><span class="l">regime</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Byte counts are derived from the shapes, not measured. A dot product does two
+				FLOPs per element read, so arithmetic intensity is about 2/bytes-per-element regardless of size —
+				far under the ~10–20 FLOP/byte where accelerators become compute-bound. Bandwidth is the ceiling,
+				so removing the round trip moves throughput almost one-for-one.</p>
+		</section>
+
+		<section>
 			<h2>Interleaved Weighted Round Robin</h2>
 			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
 				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape
