@@ -13,9 +13,21 @@
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
 		rel="stylesheet" />
 	<link rel="stylesheet" href="css/style.css" />
+	<script>
+		try {
+			var t = localStorage.getItem('theme');
+			if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
+				document.documentElement.dataset.theme = 'dark';
+			}
+		} catch (e) { }
+	</script>
 </head>
 
 <body>
+	<button class="theme" id="theme" type="button" aria-label="Toggle color theme">
+		<span data-light>Dark</span><span data-dark>Light</span>
+	</button>
+
 	<header class="hero">
 		<div class="wrap">
 			<img class="avatar" src="img/profile.jpg" alt="Jason Chen" width="56" height="56" />
@@ -26,7 +38,8 @@
 				inside a millisecond budget.
 			</p>
 			<nav class="links">
-				<a href="mailto:cyhy462702086@gmail.com">Email</a>
+				<button class="copy" id="copyEmail" type="button"
+					data-email="cyhy462702086@gmail.com">Copy email</button>
 				<a href="https://github.com/LeChn" target="_blank" rel="noopener noreferrer">GitHub</a>
 				<a href="https://www.linkedin.com/in/jason-y-chen/" target="_blank"
 					rel="noopener noreferrer">LinkedIn</a>
@@ -59,38 +72,227 @@
 		</section>
 
 		<section>
+			<h2>Architecture</h2>
+			<div class="tabs" id="diagTabs">
+				<button class="chip on" type="button" data-diagram="serving">Serving path</button>
+				<button class="chip" type="button" data-diagram="rollout">Model rollout</button>
+			</div>
+
+			<figure class="diagram" id="dg-serving">
+				<div class="dgscroll">
+				<svg viewBox="0 0 1000 336" role="img"
+					aria-label="Serving path: a request fans out to parallel index-match and model-retrieval paths, which merge before multi-stage ranking.">
+					<defs>
+						<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+							orient="auto-start-reverse">
+							<path d="M0,0 L10,5 L0,10 z" class="head" />
+						</marker>
+					</defs>
+
+					<g class="node alt" data-id="corpus" tabindex="0" role="button">
+						<rect x="140" y="0" width="160" height="44" rx="7" />
+						<text x="220" y="20">Ad corpus</text>
+						<text x="220" y="35" class="sub">the eligible set</text>
+					</g>
+					<g class="node alt" data-id="models" tabindex="0" role="button">
+						<rect x="140" y="292" width="160" height="44" rx="7" />
+						<text x="220" y="312">Models + embeddings</text>
+						<text x="220" y="327" class="sub">served on GPU</text>
+					</g>
+
+					<g class="node" data-id="req" tabindex="0" role="button">
+						<rect x="8" y="133" width="104" height="62" rx="7" />
+						<text x="60" y="159">Request</text>
+						<text x="60" y="177" class="sub">query + context</text>
+					</g>
+
+					<g class="node" data-id="cpu" tabindex="0" role="button">
+						<rect x="140" y="62" width="160" height="62" rx="7" />
+						<text x="220" y="88">Index match</text>
+						<text x="220" y="106" class="sub">inverted index · targeting</text>
+					</g>
+					<g class="node hot" data-id="gpu" tabindex="0" role="button">
+						<rect x="140" y="204" width="160" height="62" rx="7" />
+						<text x="220" y="230">Model retrieval</text>
+						<text x="220" y="248" class="sub">learned · on GPU</text>
+					</g>
+
+					<g class="node" data-id="blend" tabindex="0" role="button">
+						<rect x="328" y="133" width="110" height="62" rx="7" />
+						<text x="383" y="159">Blend</text>
+						<text x="383" y="177" class="sub">merge · dedup</text>
+					</g>
+					<g class="node" data-id="pre" tabindex="0" role="button">
+						<rect x="466" y="133" width="110" height="62" rx="7" />
+						<text x="521" y="159">Pre-rank</text>
+						<text x="521" y="177" class="sub">light model</text>
+					</g>
+					<g class="node hot" data-id="rank" tabindex="0" role="button">
+						<rect x="604" y="133" width="110" height="62" rx="7" />
+						<text x="659" y="159">Rank</text>
+						<text x="659" y="177" class="sub">GPU batched</text>
+					</g>
+					<g class="node hot" data-id="final" tabindex="0" role="button">
+						<rect x="742" y="133" width="110" height="62" rx="7" />
+						<text x="797" y="159">Final rank</text>
+						<text x="797" y="177" class="sub">heavy model</text>
+					</g>
+					<g class="node ok" data-id="auction" tabindex="0" role="button">
+						<rect x="880" y="133" width="104" height="62" rx="7" />
+						<text x="932" y="159">Auction</text>
+						<text x="932" y="177" class="sub">order + price</text>
+					</g>
+
+					<path class="edge" d="M112,164 C126,164 126,93 140,93" marker-end="url(#ar)" />
+					<path class="edge" d="M112,164 C126,164 126,235 140,235" marker-end="url(#ar)" />
+					<path class="edge" d="M300,93 C314,93 314,164 328,164" marker-end="url(#ar)" />
+					<path class="edge" d="M300,235 C314,235 314,164 328,164" marker-end="url(#ar)" />
+					<path class="edge dash" d="M220,44 V62" marker-end="url(#ar)" />
+					<path class="edge dash" d="M220,292 V266" marker-end="url(#ar)" />
+					<path class="edge" d="M438,164 H466" marker-end="url(#ar)" />
+					<path class="edge" d="M576,164 H604" marker-end="url(#ar)" />
+					<path class="edge" d="M714,164 H742" marker-end="url(#ar)" />
+					<path class="edge" d="M852,164 H880" marker-end="url(#ar)" />
+
+					<text class="elabel" x="318" y="72">parallel</text>
+				</svg>
+				</div>
+				<figcaption id="cap-serving">Select a stage.</figcaption>
+			</figure>
+
+			<figure class="diagram hidden" id="dg-rollout">
+				<div class="dgscroll">
+				<svg viewBox="0 0 850 268" role="img"
+					aria-label="Model rollout: artifact is downloaded, validated, warmed up, then activated.">
+					<g class="node" data-id="art" tabindex="0" role="button">
+						<rect x="10" y="30" width="150" height="56" rx="7" />
+						<text x="85" y="56">Artifact</text>
+						<text x="85" y="74" class="sub">published</text>
+					</g>
+					<g class="node" data-id="dl" tabindex="0" role="button">
+						<rect x="190" y="30" width="150" height="56" rx="7" />
+						<text x="265" y="56">Download</text>
+						<text x="265" y="74" class="sub">bounded concurrency</text>
+					</g>
+					<g class="node hot" data-id="val" tabindex="0" role="button">
+						<rect x="370" y="30" width="150" height="56" rx="7" />
+						<text x="445" y="56">Validate</text>
+						<text x="445" y="74" class="sub">staleness + coverage</text>
+					</g>
+					<g class="node" data-id="warm" tabindex="0" role="button">
+						<rect x="550" y="30" width="130" height="56" rx="7" />
+						<text x="615" y="56">Warmup</text>
+						<text x="615" y="74" class="sub">first tokens</text>
+					</g>
+					<g class="node ok" data-id="act" tabindex="0" role="button">
+						<rect x="710" y="30" width="130" height="56" rx="7" />
+						<text x="775" y="63">Active</text>
+					</g>
+
+					<g class="node bad" data-id="blk" tabindex="0" role="button">
+						<rect x="370" y="180" width="150" height="56" rx="7" />
+						<text x="445" y="206">Blocked</text>
+						<text x="445" y="224" class="sub">alert on-call</text>
+					</g>
+					<g class="node alt" data-id="hold" tabindex="0" role="button">
+						<rect x="590" y="180" width="180" height="56" rx="7" />
+						<text x="680" y="206">Previous model holds</text>
+						<text x="680" y="224" class="sub">no cold tier</text>
+					</g>
+
+					<path class="edge" d="M160,58 H190" marker-end="url(#ar)" />
+					<path class="edge" d="M340,58 H370" marker-end="url(#ar)" />
+					<path class="edge" d="M520,58 H550" marker-end="url(#ar)" />
+					<path class="edge" d="M680,58 H710" marker-end="url(#ar)" />
+					<path class="edge dash" d="M445,86 V180" marker-end="url(#ar)" />
+					<path class="edge dash" d="M520,208 H590" marker-end="url(#ar)" />
+					<text class="elabel" x="455" y="140">stale</text>
+					<text class="elabel" x="533" y="60" style="display:none">fresh</text>
+				</svg>
+				</div>
+				<figcaption id="cap-rollout">Select a step.</figcaption>
+			</figure>
+		</section>
+
+		<section>
+			<h2>Retrieval Funnel</h2>
+			<p class="note">Millions of candidates in, a handful out. Both retrieval paths run in parallel, then
+				merge. Drag a stage — everything the early stages drop is GPU time never spent.</p>
+			<div class="demo">
+				<div class="stages" id="stages"></div>
+				<div class="readout">
+					<div><span class="k" id="fOut">—</span><span class="l">survivors</span></div>
+					<div><span class="k" id="fLat">—</span><span class="l">latency</span></div>
+					<div><span class="k" id="fGpu">—</span><span class="l">GPU share</span></div>
+					<div><span class="k" id="fVerdict">—</span><span class="l">100 ms budget</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Illustrative model. Per-stage cost is a fixed price per candidate examined.</p>
+		</section>
+
+		<section>
 			<h2>Selected Work</h2>
-			<ol class="work">
-				<li>
-					<h3>Neural retrieval, in production</h3>
-					<p>Built serving integration for an embedding-based matcher: request-level experiment
-						configuration, dry-run evaluation, statistics transport, embedding and threshold sync.
-						Added recall-aware dynamic thresholds.</p>
+			<div class="filters" id="filters">
+				<button class="chip on" type="button" data-tag="all">All</button>
+				<button class="chip" type="button" data-tag="gpu">GPU</button>
+				<button class="chip" type="button" data-tag="retrieval">Retrieval</button>
+				<button class="chip" type="button" data-tag="platform">Platform</button>
+			</div>
+			<ol class="work" id="work">
+				<li data-tags="retrieval gpu">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>Neural retrieval, in production</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Built serving integration for an embedding-based matcher: request-level experiment
+							configuration, dry-run evaluation, statistics transport, embedding and threshold sync.
+							Added recall-aware dynamic thresholds.</p>
+					</div>
 				</li>
-				<li>
-					<h3>Inference reliability on GPU</h3>
-					<p>Model and data staleness tracking, bounded concurrency on embedding downloads, model-loading
-						fail-safes, and guards blocking experimental models from fallback tiers.</p>
+				<li data-tags="gpu">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>Inference reliability on GPU</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Model and data staleness tracking, bounded concurrency on embedding downloads,
+							model-loading fail-safes, and guards blocking experimental models from fallback tiers.</p>
+					</div>
 				</li>
-				<li>
-					<h3>A cheaper first stage</h3>
-					<p>Introduced a lightweight matching stage ahead of the main retrieval path. Onboarded matchers,
-						added cross-stage data passing, reduced CPU per request.</p>
+				<li data-tags="retrieval">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>A cheaper first stage</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Introduced a lightweight matching stage ahead of the main retrieval path. Onboarded
+							matchers, added cross-stage data passing, reduced CPU per request.</p>
+					</div>
 				</li>
-				<li>
-					<h3>Shared multi-stage ranking layer</h3>
-					<p>Replaced per-route heuristics with one ordering and selection interface spanning four ranking
-						stages. Onboarded partner teams across Facebook and Instagram surfaces.</p>
+				<li data-tags="platform retrieval">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>Shared multi-stage ranking layer</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Replaced per-route heuristics with one ordering and selection interface spanning four
+							ranking stages. Onboarded partner teams across multiple surfaces.</p>
+					</div>
 				</li>
-				<li>
-					<h3>Configuration tuning, automated</h3>
-					<p>Gradient-based system that proposes, ramps, and evaluates serving configurations — replacing
-						hand-authored experiments.</p>
+				<li data-tags="platform">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>Configuration tuning, automated</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Gradient-based system that proposes, ramps, and evaluates serving configurations —
+							replacing hand-authored experiments.</p>
+					</div>
 				</li>
-				<li>
-					<h3>Request-level tracing</h3>
-					<p>Per-source observability through the serving path: queue sizes, emitted volume, deduplication
-						and attribution, plumbed into request traces.</p>
+				<li data-tags="platform">
+					<button class="wtoggle" type="button" aria-expanded="false">
+						<h3>Request-level tracing</h3><span class="caret"></span>
+					</button>
+					<div class="wbody">
+						<p>Per-source observability through the serving path: queue sizes, emitted volume,
+							deduplication and attribution, plumbed into request traces.</p>
+					</div>
 				</li>
 			</ol>
 		</section>
@@ -121,6 +323,8 @@
 	<footer class="wrap">
 		<p>Jason Chen · New York</p>
 	</footer>
+
+	<script src="js/app.js"></script>
 </body>
 
 </html>
