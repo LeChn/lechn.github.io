@@ -697,64 +697,114 @@ figcaption strong {
 	opacity: 0.5;
 }
 
-/* Fused kernel */
-.fbar {
-	margin-bottom: 16px;
-}
-
-.fbhead {
+/* Fused kernel optimization stack */
+.ladhead {
 	display: flex;
 	justify-content: space-between;
+	align-items: baseline;
 	font-family: var(--mono);
 	font-size: 11px;
 	color: var(--muted);
-	margin-bottom: 6px;
+	margin-bottom: 8px;
 }
 
-.fbhead span:last-child {
-	color: var(--ink);
+.ladTot {
+	font-size: 20px;
+	color: var(--accent);
 }
 
-.fbtrack {
+.ladder {
 	display: flex;
-	height: 26px;
+	height: 36px;
+	border: 1px solid var(--line);
 	border-radius: 5px;
 	overflow: hidden;
 	background: var(--bg);
-	border: 1px solid var(--line);
 }
 
-.seg {
-	display: block;
+.rung {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	height: 100%;
-	transition: width 0.2s ease;
+	font-family: var(--mono);
+	font-size: 9px;
+	color: #fff;
+	white-space: nowrap;
+	overflow: hidden;
+	transition: width 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.seg.s1,
-.sw.s1 {
+.rung.base {
+	background: var(--muted);
+}
+
+.rung.k0 {
 	background: var(--sa);
 }
 
-.seg.s2,
-.sw.s2 {
+.rung.k1 {
 	background: var(--warn);
 }
 
-.seg.s3,
-.sw.s3 {
+.rung.k2 {
 	background: var(--sd);
 }
 
-.seg.s4,
-.sw.s4 {
+.rung.k3 {
 	background: var(--sb);
 }
 
-.sw {
-	display: inline-block;
-	width: 10px;
-	height: 10px;
+.rung.k4 {
+	background: var(--sc);
+}
+
+.rung.k5 {
+	background: var(--ok);
+}
+
+.tricks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+	margin-top: 16px;
+}
+
+.trick {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 7px;
+	text-align: left;
+}
+
+.trick em {
+	font-style: normal;
+	opacity: 0.65;
+}
+
+.trick .dot {
+	width: 7px;
+	height: 7px;
 	border-radius: 2px;
+	flex: none;
+	background: currentColor;
+	opacity: 0.35;
+}
+
+.trick.on .dot {
+	opacity: 1;
+}
+
+.trickwhy {
+	margin: 14px 0 0;
+	font-size: 14px;
+	color: var(--muted);
+	min-height: 2.6em;
+}
+
+.trickwhy strong {
+	color: var(--ink);
+	font-weight: 600;
 }
 
 /* Selected work */

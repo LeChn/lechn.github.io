@@ -72,6 +72,34 @@
 		</section>
 
 		<section>
+			<h2>Fused Embedding Kernel</h2>
+			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As two
+				kernels, the gathered embeddings are written to memory and immediately read back. Fused, they never
+				leave registers. The arithmetic is trivial — the whole problem is memory traffic, so removing passes
+				removes time.</p>
+			<div class="demo" id="w-fuse">
+				<div class="ladhead"><span>cumulative speedup</span><span class="ladTot">1.0×</span></div>
+				<div class="ladder"></div>
+				<div class="tricks"></div>
+				<p class="trickwhy">Toggle a technique.</p>
+				<div class="readout five">
+					<div><span class="k rSpd">1.0×</span><span class="l">speedup</span></div>
+					<div><span class="k rByte">—</span><span class="l">bytes / candidate</span></div>
+					<div><span class="k rBw">—</span><span class="l">achieved bandwidth</span></div>
+					<div><span class="k rAi">—</span><span class="l">FLOP / byte</span></div>
+					<div><span class="k rBound">—</span><span class="l">regime</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Gains compose multiplicatively, so the stack matters more than any one trick.
+				Fusion and precision are exact byte ratios you can derive from the shapes; the microarchitectural
+				factors are typical magnitudes for a bandwidth-bound gather kernel, not measurements. All of it is
+				chasing the same ceiling — a dot product does two FLOPs per element read, so arithmetic intensity sits
+				far below the ~10–20 FLOP/byte where an accelerator turns compute-bound. Stacked, this class of
+				optimization lands around an order of magnitude at the kernel level; end-to-end gains land nearer 2×
+				once the stages it never touches start to dominate.</p>
+		</section>
+
+		<section>
 			<h2>Architecture</h2>
 			<div class="tabs" id="diagTabs">
 				<button class="chip on" type="button" data-diagram="serving">Serving path</button>
@@ -271,53 +299,6 @@
 				partition work amortizes to m/(m-1) per admitted item — 2.00 at m=2, 1.50 at m=3. In practice the
 				boundary suppresses admissions so hard that admits grow like K·ln(N/K), and partitions are rarer
 				still. Average O(N) overall, against O(N log K) for a heap.</p>
-		</section>
-
-		<section>
-			<h2>Fused Embedding Kernel</h2>
-			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As
-				two kernels, the gathered embeddings get written to memory and immediately read back. Fuse lookup
-				and reduction into one pass and the intermediate never exists. The arithmetic is trivial — the
-				whole problem is memory traffic.</p>
-			<div class="demo" id="w-fuse">
-				<div class="fbar">
-					<div class="fbhead"><span>unfused · two kernels</span><span class="fUn">—</span></div>
-					<div class="fbtrack"><span class="seg s1"></span><span class="seg s2"></span><span
-							class="seg s3"></span><span class="seg s4"></span></div>
-				</div>
-				<div class="fbar">
-					<div class="fbhead"><span>fused · one pass</span><span class="fFu">—</span></div>
-					<div class="fbtrack"><span class="seg s1"></span><span class="seg s4"></span></div>
-				</div>
-				<div class="legend">
-					<span><span class="sw s1"></span> table read</span>
-					<span><span class="sw s2"></span> intermediate write</span>
-					<span><span class="sw s3"></span> intermediate read</span>
-					<span><span class="sw s4"></span> scores out</span>
-				</div>
-				<div class="wctrls">
-					<label>candidates <output class="nOut">16K</output>
-						<input type="range" class="nIn" min="0" max="6" value="4" aria-label="Candidates per request" />
-					</label>
-					<label>embedding dim <output class="dOut">128</output>
-						<input type="range" class="dIn" min="0" max="3" value="2" aria-label="Embedding dimension" />
-					</label>
-					<label>precision <output class="pOut">fp16</output>
-						<input type="range" class="pIn" min="0" max="2" value="1" aria-label="Precision" />
-					</label>
-				</div>
-				<div class="readout five">
-					<div><span class="k rUn">—</span><span class="l">unfused traffic</span></div>
-					<div><span class="k rFu">—</span><span class="l">fused traffic</span></div>
-					<div><span class="k rCut">—</span><span class="l">traffic removed</span></div>
-					<div><span class="k rAi">—</span><span class="l">FLOP / byte</span></div>
-					<div><span class="k rBound">—</span><span class="l">regime</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Byte counts are derived from the shapes, not measured. A dot product does two
-				FLOPs per element read, so arithmetic intensity is about 2/bytes-per-element regardless of size —
-				far under the ~10–20 FLOP/byte where accelerators become compute-bound. Bandwidth is the ceiling,
-				so removing the round trip moves throughput almost one-for-one.</p>
 		</section>
 
 		<section>

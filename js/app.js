@@ -468,67 +468,102 @@
 	makeTopK({ root: '#w-topk', k: 8, m: 2, seed: 5 });
 
 	/* Fused embedding kernel ----------------------------------------------
-	   Unfused, scoring costs three passes over the embedding data: read the
-	   table, write the gathered tensor, read it back. Fused, the gathered
-	   values never leave registers, so only the table read remains. Counts
-	   below are derived from shapes, not measured. */
+	   Scoring is a random-gather reduction: almost no arithmetic per byte, so
+	   every win is a memory win. The techniques below compose multiplicatively.
+	   Fusion and precision are exact byte ratios; the rest are typical
+	   magnitudes for a bandwidth-bound gather, not measurements. */
 	function makeFuse(cfg) {
 		var root = document.querySelector(cfg.root);
 		if (!root) { return; }
 		var q = function (s) { return root.querySelector(s); };
-		var NS = [1024, 2048, 4096, 8192, 16384, 32768, 65536];
-		var DS = [32, 64, 128, 256];
-		var PS = [{ nm: 'fp32', b: 4 }, { nm: 'fp16', b: 2 }, { nm: 'int8', b: 1 }];
-		var BALANCE = 10; // FLOP/byte below which a kernel is bandwidth-bound
+		var D = 128, BASE_B = 2, PEAK = 0.28, BALANCE = 10;
 
-		function bytes(v) {
-			if (v >= 1073741824) { return (v / 1073741824).toFixed(2) + ' GB'; }
-			if (v >= 1048576) { return (v / 1048576).toFixed(1) + ' MB'; }
-			if (v >= 1024) { return (v / 1024).toFixed(0) + ' KB'; }
-			return v + ' B';
+		var TRICKS = [
+			{
+				id: 'fuse', nm: 'Fuse lookup + reduce', f: 3.0, on: true, exact: true,
+				why: 'Unfused, the gathered embeddings are written to memory and read straight back. Fused they never leave registers, so three passes over the embedding data become one.'
+			},
+			{
+				id: 'vec', nm: 'Vectorized 16B loads', f: 1.8, on: false, bw: 2.4,
+				why: 'A random row gather issued as scalar loads leaves most of the bus idle. Wide aligned loads turn the same access pattern into something that can actually saturate HBM.'
+			},
+			{
+				id: 'blk', nm: '2D blocks + shared-mem reduction', f: 1.25, on: false, bw: 1.2,
+				why: 'One warp per candidate caps the memory parallelism in flight. Two-dimensional blocks keep more requests outstanding and move the reduction out of warp shuffles.'
+			},
+			{
+				id: 'pre', nm: 'Hoist the user-side term', f: 1.15, on: false,
+				why: 'The user-side contraction is identical for every candidate in the request. Compute it once and amortize it across the whole batch instead of redoing it per candidate.'
+			},
+			{
+				id: 'tc', nm: 'Tensor cores for the GEMM', f: 1.3, on: false,
+				why: 'Only helps the matmul stage. The dot product stays bandwidth-bound no matter what you run it on, which is exactly why the memory tricks matter more here.'
+			},
+			{
+				id: 'int8', nm: 'INT8 over FP16', f: 2.0, on: false, exact: true, half: true,
+				why: 'Halves every byte moved. On a kernel whose runtime tracks bytes, that is close to the whole story — and it is orthogonal to fusion, so the two multiply.'
+			}
+		];
+
+		function total() {
+			return TRICKS.reduce(function (a, t) { return t.on ? a * t.f : a; }, 1);
 		}
 
-		function num(v) { return v >= 1024 ? (v / 1024) + 'K' : String(v); }
+		function bandwidth() {
+			var bw = PEAK;
+			TRICKS.forEach(function (t) { if (t.on && t.bw) { bw *= t.bw; } });
+			return Math.min(bw, 0.9);
+		}
+
+		function bytesPer() {
+			var b = BASE_B;
+			if (TRICKS[5].on) { b = 1; }
+			var passes = TRICKS[0].on ? 1 : 3;
+			return D * b * passes + 4;
+		}
+
+		function renderTricks() {
+			q('.tricks').innerHTML = TRICKS.map(function (t, i) {
+				return '<button class="chip trick k' + i + (t.on ? ' on' : '') + '" type="button" data-t="' +
+					t.id + '"><span class="dot"></span>' + t.nm + ' <em>' + t.f.toFixed(2) + '×</em></button>';
+			}).join('');
+		}
 
 		function render() {
-			var N = NS[+q('.nIn').value], D = DS[+q('.dIn').value], P = PS[+q('.pIn').value];
-			q('.nOut').textContent = num(N);
-			q('.dOut').textContent = D;
-			q('.pOut').textContent = P.nm;
+			var tot = total(), on = TRICKS.filter(function (t) { return t.on; });
+			// Log scale so composed factors read as additive contributions.
+			var span = Math.log(tot) || 1;
+			var html = '<span class="rung base" style="width:' + (on.length ? 8 : 100) + '%">1×</span>';
+			on.forEach(function (t) {
+				var i = TRICKS.indexOf(t);
+				var w = Math.log(t.f) / span * (on.length ? 92 : 0);
+				html += '<span class="rung k' + i + '" style="width:' + w + '%">' + t.f.toFixed(2) + '×</span>';
+			});
+			q('.ladder').innerHTML = html;
+			q('.ladTot').textContent = tot.toFixed(1) + '×';
+			q('.rSpd').textContent = tot.toFixed(1) + '×';
 
-			var emb = N * D * P.b;   // one pass over the gathered embeddings
-			var out = N * 4;         // fp32 scores
-			var unfused = emb * 3 + out;
-			var fused = emb + out;
-
-			var bars = root.querySelectorAll('.fbtrack');
-			var w = function (v) { return (v / unfused * 100) + '%'; };
-			var u = bars[0].children;
-			u[0].style.width = w(emb);
-			u[1].style.width = w(emb);
-			u[2].style.width = w(emb);
-			u[3].style.width = w(out);
-			var f = bars[1].children;
-			f[0].style.width = w(emb);
-			f[1].style.width = w(out);
-
-			var flops = 2 * N * D;   // one multiply-add per element
-			var ai = flops / fused;
-
-			q('.fUn').textContent = bytes(unfused);
-			q('.fFu').textContent = bytes(fused);
-			q('.rUn').textContent = bytes(unfused);
-			q('.rFu').textContent = bytes(fused);
-			q('.rCut').textContent = (unfused / fused).toFixed(2) + '×';
+			var bp = bytesPer();
+			q('.rByte').textContent = bp + ' B';
+			q('.rBw').textContent = Math.round(bandwidth() * 100) + '%';
+			var ai = (2 * D) / bp;
 			q('.rAi').textContent = ai.toFixed(2);
 			var el = q('.rBound');
 			el.textContent = ai < BALANCE ? 'bandwidth' : 'compute';
 			el.className = 'k rBound ' + (ai < BALANCE ? 'over' : 'under');
 		}
 
-		['.nIn', '.dIn', '.pIn'].forEach(function (s) {
-			q(s).addEventListener('input', render);
+		q('.tricks').addEventListener('click', function (e) {
+			var b = e.target.closest('.trick');
+			if (!b) { return; }
+			var t = TRICKS.filter(function (x) { return x.id === b.dataset.t; })[0];
+			t.on = !t.on;
+			b.classList.toggle('on', t.on);
+			q('.trickwhy').innerHTML = '<strong>' + t.nm + (t.on ? '' : ' (off)') + '</strong> — ' + t.why;
+			render();
 		});
+
+		renderTricks();
 		render();
 	}
 
