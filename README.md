@@ -1,3 +1,15 @@
-## Copyright and License
+# lechn.github.io
 
-Copyright 2013-2017 Blackrock Digital LLC. Code released under the [MIT](https://github.com/BlackrockDigital/startbootstrap-resume/blob/gh-pages/LICENSE) license.
+Personal site. Static HTML and CSS, no dependencies, no build step.
+
+```
+index.html      single page
+css/style.css   all styles
+img/            assets
+```
+
+Serve locally:
+
+```sh
+python3 -m http.server 8000
+```

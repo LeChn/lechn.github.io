@@ -3,96 +3,124 @@
 
 <head>
 	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="description"
-		content="Jason Chen — Software Engineer at Meta working on large-scale retrieval and distributed systems." />
+		content="Jason Chen — Staff Software Engineer at Meta. GPU inference serving, embedding retrieval, and low-latency ranking infrastructure." />
 	<meta name="author" content="Jason Chen" />
-	<title>Jason Chen — Software Engineer</title>
-	<link href="https://fonts.googleapis.com/css?family=Saira+Extra+Condensed:100,200,300,400,500,600,700,800,900"
+	<title>Jason Chen — Model Serving Infrastructure</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
 		rel="stylesheet" />
-	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i,800,800i"
-		rel="stylesheet" />
-	<link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-	<link href="vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
-	<link href="css/resume.css" rel="stylesheet" />
+	<link rel="stylesheet" href="css/style.css" />
 </head>
 
-<body id="page-top">
-	<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top" id="sideNav">
-		<a class="navbar-brand js-scroll-trigger" href="#page-top">
-			<span class="d-block d-lg-none">Jason Chen</span>
-			<span class="d-none d-lg-block">
-				<img class="img-fluid img-profile rounded-circle mx-auto mb-2" src="img/profile.jpg"
-					alt="Jason Chen" />
-			</span>
-		</a>
-		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-			aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-			<span class="navbar-toggler-icon"></span>
-		</button>
-		<div class="collapse navbar-collapse" id="navbarSupportedContent">
-			<ul class="navbar-nav">
-				<li class="nav-item">
-					<a class="nav-link js-scroll-trigger" href="#about">About</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link js-scroll-trigger" href="#resume">Resume</a>
-				</li>
-			</ul>
+<body>
+	<header class="hero">
+		<div class="wrap">
+			<img class="avatar" src="img/profile.jpg" alt="Jason Chen" width="56" height="56" />
+			<p class="eyebrow">Staff Software Engineer · Meta Retrieval Platform</p>
+			<h1>Jason Chen</h1>
+			<p class="lede">
+				I build the GPU inference and retrieval systems that select from billions of candidates
+				inside a millisecond budget.
+			</p>
+			<nav class="links">
+				<a href="mailto:cyhy462702086@gmail.com">Email</a>
+				<a href="https://github.com/LeChn" target="_blank" rel="noopener noreferrer">GitHub</a>
+				<a href="https://www.linkedin.com/in/jason-y-chen/" target="_blank"
+					rel="noopener noreferrer">LinkedIn</a>
+				<a href="https://drive.google.com/file/d/17ihQA-HoH4B9n_eSdBThpC5jF3rNTa-B/view" target="_blank"
+					rel="noopener noreferrer">Résumé</a>
+			</nav>
 		</div>
-	</nav>
-	<div class="container-fluid p-0">
-		<section class="resume-section p-3 p-lg-5 d-flex flex-column" id="about">
-			<div class="my-auto">
-				<h1 class="mb-0">
-					Jason
-					<span class="text-primary">Chen</span>
-				</h1>
-				<div class="subheading mb-5">
-					<a href="mailto:cyhy462702086@gmail.com">cyhy462702086@gmail.com</a>
+	</header>
+
+	<main class="wrap">
+		<section>
+			<h2>Focus</h2>
+			<div class="grid">
+				<article class="card">
+					<h3>GPU Inference Serving</h3>
+					<p>Model loading, warmup, and fail-safe fallback tiers. Staleness detection across models and
+						embeddings. Concurrency control on artifact distribution.</p>
+				</article>
+				<article class="card">
+					<h3>Latency-Bound Pipelines</h3>
+					<p>Multi-stage selection under hard millisecond budgets. Cheap early stages that cut downstream
+						GPU cost before it is spent.</p>
+				</article>
+				<article class="card">
+					<h3>Embedding Retrieval</h3>
+					<p>Vector matching over billion-scale corpora. Embedding and threshold synchronization,
+						recall-aware dynamic cutoffs.</p>
+				</article>
+			</div>
+		</section>
+
+		<section>
+			<h2>Selected Work</h2>
+			<ol class="work">
+				<li>
+					<h3>Neural retrieval, in production</h3>
+					<p>Built serving integration for an embedding-based matcher: request-level experiment
+						configuration, dry-run evaluation, statistics transport, embedding and threshold sync.
+						Added recall-aware dynamic thresholds.</p>
+				</li>
+				<li>
+					<h3>Inference reliability on GPU</h3>
+					<p>Model and data staleness tracking, bounded concurrency on embedding downloads, model-loading
+						fail-safes, and guards blocking experimental models from fallback tiers.</p>
+				</li>
+				<li>
+					<h3>A cheaper first stage</h3>
+					<p>Introduced a lightweight matching stage ahead of the main retrieval path. Onboarded matchers,
+						added cross-stage data passing, reduced CPU per request.</p>
+				</li>
+				<li>
+					<h3>Shared multi-stage ranking layer</h3>
+					<p>Replaced per-route heuristics with one ordering and selection interface spanning four ranking
+						stages. Onboarded partner teams across Facebook and Instagram surfaces.</p>
+				</li>
+				<li>
+					<h3>Configuration tuning, automated</h3>
+					<p>Gradient-based system that proposes, ramps, and evaluates serving configurations — replacing
+						hand-authored experiments.</p>
+				</li>
+				<li>
+					<h3>Request-level tracing</h3>
+					<p>Per-source observability through the serving path: queue sizes, emitted volume, deduplication
+						and attribution, plumbed into request traces.</p>
+				</li>
+			</ol>
+		</section>
+
+		<section>
+			<h2>Background</h2>
+			<dl class="timeline">
+				<div>
+					<dt>2021 — present</dt>
+					<dd><strong>Meta</strong> · Staff Software Engineer, Retrieval Platform · New York</dd>
 				</div>
-				<p class="mb-5">
-					Staff Software Engineer on Meta's Retrieval Platform, building the indexing, ranking, and GPU
-					inference systems that select from billions of candidates at millisecond latency.
-					USAMO finalist. OMSCS (Georgia Tech), B.S. CS (UF).
-				</p>
-				<ul class="list-inline list-social-icons mb-0">
-					<li class="list-inline-item">
-						<a href="https://www.linkedin.com/in/jason-y-chen/" target="_blank" rel="noopener noreferrer"
-							aria-label="LinkedIn">
-							<span class="fa-stack fa-lg">
-								<i class="fa fa-circle fa-stack-2x"></i>
-								<i class="fa fa-linkedin fa-stack-1x fa-inverse"></i>
-							</span>
-						</a>
-					</li>
-					<li class="list-inline-item">
-						<a href="https://github.com/LeChn" target="_blank" rel="noopener noreferrer"
-							aria-label="GitHub">
-							<span class="fa-stack fa-lg">
-								<i class="fa fa-circle fa-stack-2x"></i>
-								<i class="fa fa-github fa-stack-1x fa-inverse"></i>
-							</span>
-						</a>
-					</li>
-				</ul>
-			</div>
+				<div>
+					<dt>Georgia Tech</dt>
+					<dd>M.S. Computer Science</dd>
+				</div>
+				<div>
+					<dt>Florida</dt>
+					<dd>B.S. Computer Science</dd>
+				</div>
+				<div>
+					<dt>USAMO</dt>
+					<dd>Finalist</dd>
+				</div>
+			</dl>
 		</section>
-		<section class="resume-section p-3 p-lg-5 d-flex flex-column" id="resume">
-			<div class="my-auto">
-				<h2 class="mb-5">
-					<a href="https://drive.google.com/file/d/17ihQA-HoH4B9n_eSdBThpC5jF3rNTa-B/view" target="_blank"
-						rel="noopener noreferrer">Resume</a>
-				</h2>
-				<iframe src="https://drive.google.com/file/d/17ihQA-HoH4B9n_eSdBThpC5jF3rNTa-B/preview"
-					title="Jason Chen resume" width="100%" height="1200px"></iframe>
-			</div>
-		</section>
-	</div>
-	<script src="vendor/jquery/jquery.min.js"></script>
-	<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-	<script src="vendor/jquery-easing/jquery.easing.min.js"></script>
-	<script src="js/resume.js"></script>
+	</main>
+
+	<footer class="wrap">
+		<p>Jason Chen · New York</p>
+	</footer>
 </body>
 
 </html>
