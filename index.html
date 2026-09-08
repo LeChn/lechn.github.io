@@ -231,6 +231,78 @@
 		</section>
 
 		<section>
+			<h2>Interleaved Weighted Round Robin</h2>
+			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
+				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape
+				of running several retrieval models in parallel and deciding how much of the result each one owns.
+			</p>
+			<div class="demo" id="w-iwrr">
+				<div class="iwrr">
+					<div class="qs"></div>
+					<div>
+						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
+						<div class="chips out"></div>
+					</div>
+				</div>
+				<div class="wctrls"></div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+				</div>
+				<div class="readout">
+					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
+					<div><span class="k rMix">—</span><span class="l">output mix</span></div>
+					<div><span class="k rRatio">—</span><span class="l">target ratio</span></div>
+					<div><span class="k rRound">1</span><span class="l">round</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Deterministic, and order-preserving within each queue.</p>
+		</section>
+
+		<section>
+			<h2>Unique-Value Blender</h2>
+			<p class="note">Supplementary sources keep surfacing candidates the main queue already has. Naive dedup
+				credits whoever emits first. This one remembers main membership and <em>reattributes</em> the
+				duplicate, so a supplementary slot is only spent on genuinely new supply. The catch: main is a
+				bounded top-K filled on the fly, so membership is only knowable inside the window.</p>
+			<div class="demo" id="w-uvb">
+				<div class="iwrr">
+					<div class="qs"></div>
+					<div>
+						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
+						<div class="chips out"></div>
+						<div class="legend">
+							<span><span class="it a">12</span> main</span>
+							<span><span class="it a re">12</span> reattributed</span>
+							<span><span class="it b miss">12</span> outside window</span>
+							<span><span class="it b gone">12</span> dropped</span>
+						</div>
+					</div>
+				</div>
+				<div class="wctrls"></div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+					<label>capacity <output class="capOut">12</output>
+						<input type="range" class="cap" min="4" max="24" value="12" aria-label="Output capacity" />
+					</label>
+				</div>
+				<div class="readout five">
+					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
+					<div><span class="k rRe">0</span><span class="l">reattributed</span></div>
+					<div><span class="k rUv">—</span><span class="l">unique value</span></div>
+					<div><span class="k rMiss">0</span><span class="l">outside window</span></div>
+					<div><span class="k rMem">0</span><span class="l">resident / 2K</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Reattribution costs the supplementary source its slot but not its credit. Items
+				evicted from the bounded window before a supplementary match arrives cannot be reattributed — those
+				are counted separately.</p>
+		</section>
+
+		<section>
 			<h2>Selected Work</h2>
 			<div class="filters" id="filters">
 				<button class="chip on" type="button" data-tag="all">All</button>
