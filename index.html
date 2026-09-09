@@ -185,8 +185,15 @@
 			<p class="groupnote">How a request actually moves, and how a model reaches production.</p>
 		</div>
 
-		<section id="architecture">
-			<h3 class="wh">Architecture</h3>
+		<section id="architecture" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-architecture">
+				<span class="foldtitle">
+					<h3 class="wh">Architecture</h3>
+					<span class="foldhint">Two clickable diagrams: the serving path, and how a model reaches production.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-architecture" hidden>
 
 			<div class="tabs" id="diagTabs">
 				<button class="chip on" type="button" data-diagram="serving">Serving path</button>
@@ -327,6 +334,7 @@
 				</div>
 				<figcaption id="cap-rollout">Select a step.</figcaption>
 			</figure>
+			</div>
 		</section>
 
 		<div class="group" id="memory">
@@ -334,8 +342,15 @@
 			<p class="groupnote">Scoring is a random-gather reduction. Almost no arithmetic per byte, so every win is a memory win.</p>
 		</div>
 
-		<section id="fused">
-			<h3 class="wh">Fused Embedding Kernel</h3>
+		<section id="fused" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-fused">
+				<span class="foldtitle">
+					<h3 class="wh">Fused Embedding Kernel</h3>
+					<span class="foldhint">Scoring a candidate means reading its embedding and reducing it against the user's.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-fused" hidden>
 
 			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As two
 				kernels, the gathered embeddings are written to memory and immediately read back. Fused, they never
@@ -361,10 +376,18 @@
 				far below the ~10–20 FLOP/byte where an accelerator turns compute-bound. Stacked, this class of
 				optimization lands around an order of magnitude at the kernel level; end-to-end gains land nearer 2×
 				once the stages it never touches start to dominate.</p>
+			</div>
 		</section>
 
-		<section id="coalescing">
-			<h3 class="wh">Coalescing — why wider loads matter on a gather</h3>
+		<section id="coalescing" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-coalescing">
+				<span class="foldtitle">
+					<h3 class="wh">Coalescing — why wider loads matter on a gather</h3>
+					<span class="foldhint">Memory is served in fixed 32-byte sectors, not bytes.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-coalescing" hidden>
 
 			<p class="note">Memory is served in fixed 32-byte sectors, not bytes. A warp's 32 lanes are coalesced
 				into the smallest set of sectors covering their addresses, and you pay for every sector fetched
@@ -401,10 +424,18 @@
 			<p class="disclaimer">A gather cannot be made contiguous — the rows are wherever the index says. Widening
 				the load is the lever you actually have: same sectors touched, four times the useful bytes per one,
 				and a quarter of the load instructions to issue.</p>
+			</div>
 		</section>
 
-		<section id="reduction">
-			<h3 class="wh">Reduction — collapsing a row without touching memory</h3>
+		<section id="reduction" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-reduction">
+				<span class="foldtitle">
+					<h3 class="wh">Reduction — collapsing a row without touching memory</h3>
+					<span class="foldhint">Once the row is in registers it still has to be summed.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-reduction" hidden>
 
 			<p class="note">Once the row is in registers it still has to be summed. A shared-memory tree needs a
 				barrier at every level; register shuffles let lanes read each other directly, so the same log-depth
@@ -433,6 +464,7 @@
 			<p class="disclaimer">Both collapse 32 lanes in log₂32 = 5 steps. The difference is what each step costs:
 				a barrier serialises the whole block and the staging array burns shared memory that would otherwise
 				raise occupancy.</p>
+			</div>
 		</section>
 
 		<div class="group" id="selection">
@@ -440,8 +472,15 @@
 			<p class="groupnote">Narrowing millions of candidates to a handful, under a fixed latency budget.</p>
 		</div>
 
-		<section id="funnel">
-			<h3 class="wh">Retrieval Funnel</h3>
+		<section id="funnel" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-funnel">
+				<span class="foldtitle">
+					<h3 class="wh">Retrieval Funnel</h3>
+					<span class="foldhint">Millions of candidates in, a handful out.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-funnel" hidden>
 
 			<p class="note">Millions of candidates in, a handful out. Both retrieval paths run in parallel, then
 				merge. Drag a stage — everything the early stages drop is GPU time never spent.</p>
@@ -455,10 +494,18 @@
 				</div>
 			</div>
 			<p class="disclaimer">Illustrative model. Per-stage cost is a fixed price per candidate examined.</p>
+			</div>
 		</section>
 
-		<section id="topk">
-			<h3 class="wh">Bounded Top-K Buffer</h3>
+		<section id="topk" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-topk">
+				<span class="foldtitle">
+					<h3 class="wh">Bounded Top-K Buffer</h3>
+					<span class="foldhint">Ranked candidates arrive faster than the latency budget allows sorting.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-topk" hidden>
 
 			<p class="note">Ranked candidates arrive faster than the latency budget allows sorting. Keep the best K
 				— but pay neither a full sort nor a heap update per item. Admit into a buffer of m·K; when it
@@ -499,10 +546,18 @@
 				partition work amortizes to m/(m-1) per admitted item — 2.00 at m=2, 1.50 at m=3. In practice the
 				boundary suppresses admissions so hard that admits grow like K·ln(N/K), and partitions are rarer
 				still. Average O(N) overall, against O(N log K) for a heap.</p>
+			</div>
 		</section>
 
-		<section id="bloom">
-			<h3 class="wh">Bloom Filter</h3>
+		<section id="bloom" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-bloom">
+				<span class="foldtitle">
+					<h3 class="wh">Bloom Filter</h3>
+					<span class="foldhint">Learned retrieval optimises for relevance, but eligibility is a hard constraint — who an advertiser will pay to reach, what budget is l</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-bloom" hidden>
 
 			<p class="note">Learned retrieval optimises for relevance, but eligibility is a hard constraint — who
 				an advertiser will pay to reach, what budget is left, what policy allows. A model can happily
@@ -546,6 +601,7 @@
 				filter has to be sized against the load it will actually see. The closed form assumes perfectly
 				independent hashing, so once the array saturates it drifts from what any concrete hash function
 				really does; showing both numbers is the point.</p>
+			</div>
 		</section>
 
 		<div class="group" id="distribution">
@@ -553,8 +609,15 @@
 			<p class="groupnote">Splitting work across machines and sources without duplicating it, starving it, or losing it.</p>
 		</div>
 
-		<section id="slicing">
-			<h3 class="wh">Request Slicing</h3>
+		<section id="slicing" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-slicing">
+				<span class="foldtitle">
+					<h3 class="wh">Request Slicing</h3>
+					<span class="foldhint">To spend more capacity on one request you split it across workers — and the split has to be exactly disjoint.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-slicing" hidden>
 
 			<p class="note">To spend more capacity on one request you split it across workers — and the split has to
 				be exactly disjoint. Slicing on index position is cheap, until replicas refresh on their own schedules
@@ -598,10 +661,18 @@
 				lives. Staggered index updates break that agreement, and the failure is silent — no error, just a
 				quieter funnel. Keying the split on an attribute that travels with the item makes the partition
 				replica-independent, which is the property that actually matters.</p>
+			</div>
 		</section>
 
-		<section id="iwrr">
-			<h3 class="wh">Interleaved Weighted Round Robin</h3>
+		<section id="iwrr" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-iwrr">
+				<span class="foldtitle">
+					<h3 class="wh">Interleaved Weighted Round Robin</h3>
+					<span class="foldhint">Weighted sources, one ordered output.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-iwrr" hidden>
 
 			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
 				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape
@@ -629,10 +700,18 @@
 				</div>
 			</div>
 			<p class="disclaimer">Deterministic, and order-preserving within each queue.</p>
+			</div>
 		</section>
 
-		<section id="blender">
-			<h3 class="wh">Unique-Value Blender</h3>
+		<section id="blender" class="fold">
+			<button class="foldhead" type="button" aria-expanded="false" aria-controls="b-blender">
+				<span class="foldtitle">
+					<h3 class="wh">Unique-Value Blender</h3>
+					<span class="foldhint">Supplementary sources keep surfacing candidates the main queue already has.</span>
+				</span>
+				<span class="foldcaret"></span>
+			</button>
+			<div class="foldbody" id="b-blender" hidden>
 
 			<p class="note">Supplementary sources keep surfacing candidates the main queue already has. Naive dedup
 				credits whoever emits first. This one remembers main membership and <em>reattributes</em> the
@@ -672,6 +751,7 @@
 			<p class="disclaimer">Reattribution costs the supplementary source its slot but not its credit. Items
 				evicted from the bounded window before a supplementary match arrives cannot be reattributed — those
 				are counted separately.</p>
+			</div>
 		</section>
 
 		<section>

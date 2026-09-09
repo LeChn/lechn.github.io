@@ -924,6 +924,54 @@
 
 	makeRed({ root: '#w-red' });
 
+	/* Systems: accordion --------------------------------------------------
+	   Sections start collapsed; opening one closes the rest. Deep links from
+	   the Work section must open their target, including when the hash is
+	   already current and hashchange will not fire. */
+	var folds = $$('.fold');
+	if (folds.length) {
+		var setFold = function (sec, on) {
+			sec.classList.toggle('open', on);
+			var head = $('.foldhead', sec), body = $('.foldbody', sec);
+			head.setAttribute('aria-expanded', String(on));
+			if (on) { body.removeAttribute('hidden'); }
+			else { body.setAttribute('hidden', ''); }
+		};
+
+		var openOnly = function (sec) {
+			folds.forEach(function (f) { setFold(f, f === sec); });
+		};
+
+		folds.forEach(function (f) {
+			$('.foldhead', f).addEventListener('click', function () {
+				if (f.classList.contains('open')) { setFold(f, false); }
+				else { openOnly(f); }
+			});
+		});
+
+		var openFromHash = function (scroll) {
+			var h = location.hash;
+			if (!h || h === '#') { return; }
+			var el = null;
+			try { el = document.querySelector(h); } catch (e) { return; }
+			if (!el || !el.classList.contains('fold')) { return; }
+			openOnly(el);
+			if (scroll) { el.scrollIntoView({ block: 'start' }); }
+		};
+
+		window.addEventListener('hashchange', function () { openFromHash(true); });
+
+		$$('a[href^="#"]').forEach(function (a) {
+			a.addEventListener('click', function () {
+				var t = null;
+				try { t = document.querySelector(a.getAttribute('href')); } catch (e) { return; }
+				if (t && t.classList.contains('fold')) { openOnly(t); }
+			});
+		});
+
+		openFromHash(false);
+	}
+
 	/* Work: master-detail ---------------------------------------------------
 	   Tabs rather than an accordion: one pane visible, instant switching,
 	   arrow-key navigable. Filtering hides tabs and falls back to the first

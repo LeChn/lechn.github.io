@@ -1351,6 +1351,89 @@ figcaption strong {
 	color: var(--muted);
 }
 
+/* Systems: collapsible sections, one open at a time */
+.fold {
+	padding: 0;
+	border-bottom: 0;
+	border-top: 1px solid var(--line);
+}
+
+.group + .fold {
+	border-top: 0;
+}
+
+.fold:last-of-type {
+	border-bottom: 1px solid var(--line);
+}
+
+.foldhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	width: 100%;
+	padding: 18px 0;
+	background: none;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.foldtitle {
+	display: block;
+}
+
+.foldhead .wh {
+	margin: 0 0 4px;
+	transition: color 0.15s;
+}
+
+.foldhint {
+	display: block;
+	font-size: 14px;
+	line-height: 1.45;
+	color: var(--muted);
+}
+
+.fold.open .foldhint {
+	display: none;
+}
+
+.foldhead:hover .wh,
+.fold.open .wh {
+	color: var(--accent);
+}
+
+.foldcaret {
+	flex: none;
+	width: 9px;
+	height: 9px;
+	margin-right: 3px;
+	border-right: 1.5px solid var(--muted);
+	border-bottom: 1.5px solid var(--muted);
+	transform: rotate(45deg);
+	transition: transform 0.2s;
+}
+
+.fold.open .foldcaret {
+	transform: rotate(-135deg);
+	border-color: var(--accent);
+}
+
+.foldbody {
+	padding-bottom: 34px;
+}
+
+.foldbody[hidden] {
+	display: none;
+}
+
+.foldbody > .note:first-child {
+	margin-top: 0;
+}
+
 /* Systems: in-page group links */
 .grouplinks {
 	display: flex;
