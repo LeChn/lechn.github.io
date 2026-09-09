@@ -1,0 +1,158 @@
+/* Reusable pieces shared across sections and models. */
+
+/* Focus cards */
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 28px;
+	margin-top: 20px;
+}
+
+.card p {
+	margin: 0;
+	font-size: 15px;
+	color: var(--muted);
+}
+
+/* Chips */
+.chip {
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--muted);
+	background: none;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 5px 13px;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.chip:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+.chip.on {
+	color: var(--bg);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+
+.tabs,
+.filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 20px 0 24px;
+}
+
+/* Demos */
+.demo {
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	padding: 22px;
+	background: var(--panel);
+}
+
+.stages {
+	display: grid;
+	gap: 20px;
+}
+
+.stage {
+	display: grid;
+	grid-template-columns: 92px 1fr 70px;
+	grid-template-areas:
+		'nm bar ct'
+		'nm sld kp';
+	gap: 7px 12px;
+	align-items: center;
+}
+
+.stage .nm {
+	grid-area: nm;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--muted);
+}
+
+.stage .bar {
+	grid-area: bar;
+}
+
+.stage .ct {
+	grid-area: ct;
+	font-family: var(--mono);
+	font-size: 12px;
+	text-align: right;
+	color: var(--ink);
+}
+
+.stage .kp {
+	grid-area: kp;
+	font-family: var(--mono);
+	font-size: 10px;
+	text-align: right;
+	color: var(--muted);
+}
+
+.bar {
+	position: relative;
+	height: 22px;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 5px;
+	overflow: hidden;
+}
+
+.fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	background: color-mix(in srgb, var(--accent) 22%, transparent);
+	border-right: 2px solid var(--accent);
+	transition: width 0.18s ease;
+}
+
+.stage input[type='range'] {
+	grid-area: sld;
+	width: 100%;
+	margin: 0;
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+
+.dgscroll {
+	overflow-x: auto;
+}
+
+.readout {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+	margin-top: 20px;
+	padding-top: 18px;
+	border-top: 1px solid var(--line);
+}
+
+.readout .k {
+	display: block;
+	font-family: var(--mono);
+	font-size: 17px;
+	color: var(--ink);
+}
+
+.readout .l {
+	display: block;
+	font-family: var(--mono);
+	font-size: 10px;
+	color: var(--muted);
+	margin-top: 3px;
+}
+
+.readout .k.over {
+	color: var(--warn);
+}
+
+.readout .k.under {
+	color: var(--ok);
+}

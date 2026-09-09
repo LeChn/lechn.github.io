@@ -1,0 +1,445 @@
+/* Page sections: systems groups, work master-detail, background road. */
+
+/* Systems page: groups + section headings */
+.group {
+	padding: 72px 0 0;
+}
+
+.group:first-child {
+	padding-top: 24px;
+}
+
+.grouph {
+	margin: 0 0 10px;
+	font-size: 30px;
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	text-transform: none;
+	font-family: 'Inter', sans-serif;
+	color: var(--ink);
+}
+
+.groupnote {
+	margin: 0;
+	font-size: 16px;
+	color: var(--muted);
+	max-width: 40em;
+}
+
+.wh {
+	margin: 0 0 12px;
+	font-family: var(--mono);
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* Work: master-detail */
+.note a {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+.note a:hover {
+	text-decoration: underline;
+}
+
+.workx {
+	position: relative;
+	left: 50%;
+	transform: translateX(-50%);
+	width: min(94vw, 940px);
+	display: grid;
+	grid-template-columns: 292px 1fr;
+	gap: 28px;
+	margin-top: 4px;
+}
+
+.wlist {
+	display: flex;
+	flex-direction: column;
+	border-left: 1px solid var(--line);
+}
+
+.wtab {
+	position: relative;
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	width: 100%;
+	padding: 13px 14px;
+	background: none;
+	border: 0;
+	border-left: 2px solid transparent;
+	margin-left: -1px;
+	color: var(--muted);
+	text-align: left;
+	font: inherit;
+	cursor: pointer;
+	transition: color 0.15s, border-color 0.2s, background 0.15s;
+}
+
+.wtab em {
+	flex: none;
+	font-style: normal;
+	font-family: var(--mono);
+	font-size: 11px;
+	opacity: 0.7;
+}
+
+.wtab span {
+	font-size: 15px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	line-height: 1.35;
+}
+
+.wtab:hover {
+	color: var(--ink);
+}
+
+.wtab.on {
+	color: var(--ink);
+	border-left-color: var(--accent);
+	background: var(--panel);
+}
+
+.wtab.on em {
+	color: var(--accent);
+	opacity: 1;
+}
+
+.wtab.out {
+	display: none;
+}
+
+.wpanes {
+	position: relative;
+	min-height: 210px;
+}
+
+.wpane {
+	animation: rise 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.wpane[hidden] {
+	display: none;
+}
+
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.wpane h3 {
+	margin: 0 0 10px;
+	font-size: 21px;
+	letter-spacing: -0.02em;
+}
+
+.wpane p {
+	margin: 0;
+	font-size: 15px;
+	color: var(--muted);
+	max-width: 46em;
+}
+
+.mech {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 7px;
+	margin-top: 22px;
+	padding-top: 18px;
+	border-top: 1px solid var(--line);
+}
+
+.mechlab {
+	font-family: var(--mono);
+	font-size: 10px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin-right: 4px;
+}
+
+.mech a {
+	font-family: var(--mono);
+	font-size: 12px;
+	text-decoration: none;
+	color: var(--accent);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 5px 13px;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.mech a:hover {
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Background: a commit graph drawn as a road */
+.road {
+	margin-top: 30px;
+}
+
+.rlabels,
+.ryears,
+.rgemrow {
+	position: relative;
+}
+
+.rlabels {
+	height: 18px;
+	margin-bottom: 2px;
+}
+
+.rname {
+	position: absolute;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--ink);
+}
+
+.rsvg {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;
+}
+
+/* Road build-up: dark casing, coloured surface, dashed centre markings. */
+.casing {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 21;
+	stroke-linecap: round;
+	opacity: 0.14;
+}
+
+.lane {
+	fill: none;
+	stroke-width: 14;
+	stroke-linecap: butt;
+}
+
+.lane.sh {
+	color: var(--muted);
+	stroke: url(#fadeIn);
+	stroke-linecap: round;
+}
+
+.lane.hs {
+	stroke: var(--sc);
+}
+
+.lane.uf {
+	stroke: var(--sb);
+}
+
+.lane.meta {
+	stroke: var(--accent);
+	stroke-linecap: round;
+}
+
+.lane.gt {
+	stroke: var(--sd);
+	stroke-linecap: round;
+}
+
+.markings {
+	fill: none;
+	stroke: var(--bg);
+	stroke-width: 2.5;
+	stroke-dasharray: 11 15;
+	stroke-linecap: round;
+	opacity: 0.85;
+}
+
+/* Commits sit on the road where the path changes. */
+.commit {
+	fill: var(--bg);
+	stroke-width: 3;
+}
+
+.commit.hs {
+	stroke: var(--sc);
+}
+
+.commit.uf {
+	stroke: var(--sb);
+}
+
+.commit.meta {
+	stroke: var(--accent);
+}
+
+.commit.gt {
+	stroke: var(--sd);
+}
+
+.ryears {
+	height: 15px;
+	margin-top: 2px;
+}
+
+.ryear {
+	position: absolute;
+	transform: translateX(-50%);
+	font-family: var(--mono);
+	font-size: 10px;
+	color: var(--muted);
+}
+
+.rgemrow {
+	height: 16px;
+	margin-top: 2px;
+}
+
+.rgemlab {
+	position: absolute;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--sd);
+}
+
+.rgemlab em {
+	font-style: normal;
+	font-family: var(--mono);
+	font-size: 10px;
+	font-weight: 400;
+	opacity: 0.8;
+}
+
+.rnote {
+	margin: 20px 0 0;
+	font-size: 14px;
+	color: var(--muted);
+}
+
+/* Systems: collapsible sections, one open at a time */
+.fold {
+	padding: 0;
+	border-bottom: 0;
+	border-top: 1px solid var(--line);
+}
+
+.group + .fold {
+	border-top: 0;
+}
+
+.fold:last-of-type {
+	border-bottom: 1px solid var(--line);
+}
+
+.foldhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	width: 100%;
+	padding: 18px 0;
+	background: none;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.foldtitle {
+	display: block;
+}
+
+.foldhead .wh {
+	margin: 0 0 4px;
+	transition: color 0.15s;
+}
+
+.foldhint {
+	display: block;
+	font-size: 14px;
+	line-height: 1.45;
+	color: var(--muted);
+}
+
+.fold.open .foldhint {
+	display: none;
+}
+
+.foldhead:hover .wh,
+.fold.open .wh {
+	color: var(--accent);
+}
+
+.foldcaret {
+	flex: none;
+	width: 9px;
+	height: 9px;
+	margin-right: 3px;
+	border-right: 1.5px solid var(--muted);
+	border-bottom: 1.5px solid var(--muted);
+	transform: rotate(45deg);
+	transition: transform 0.2s;
+}
+
+.fold.open .foldcaret {
+	transform: rotate(-135deg);
+	border-color: var(--accent);
+}
+
+.foldbody {
+	padding-bottom: 34px;
+}
+
+.foldbody[hidden] {
+	display: none;
+}
+
+.foldbody > .note:first-child {
+	margin-top: 0;
+}
+
+/* Systems: in-page group links */
+.grouplinks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 20px;
+}
+
+.grouplinks a {
+	font-family: var(--mono);
+	font-size: 12px;
+	text-decoration: none;
+	color: var(--muted);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	padding: 6px 14px;
+	transition: color 0.15s, border-color 0.15s;
+}
+
+.grouplinks a:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+
+section[id],
+.group[id] {
+	scroll-margin-top: 24px;
+}

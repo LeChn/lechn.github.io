@@ -1,0 +1,32 @@
+/* Design tokens: colour, type and theme variables. */
+
+:root {
+	--ink: #111418;
+	--muted: #5c6773;
+	--line: #e4e8ec;
+	--bg: #fff;
+	--panel: #fafbfc;
+	--accent: #2f6df6;
+	--warn: #c2410c;
+	--ok: #15803d;
+	--sa: #2f6df6;
+	--sb: #0f766e;
+	--sc: #b45309;
+	--sd: #7c3aed;
+	--mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html[data-theme='dark'] {
+	--ink: #e8ecf1;
+	--muted: #8b97a5;
+	--line: #232a33;
+	--bg: #0d1117;
+	--panel: #131920;
+	--accent: #5b8dff;
+	--warn: #fb923c;
+	--ok: #4ade80;
+	--sa: #5b8dff;
+	--sb: #2dd4bf;
+	--sc: #fbbf24;
+	--sd: #c4b5fd;
+}
