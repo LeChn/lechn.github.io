@@ -71,487 +71,140 @@
 			</div>
 		</section>
 
-		<section>
-			<h2>Fused Embedding Kernel</h2>
-			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As two
-				kernels, the gathered embeddings are written to memory and immediately read back. Fused, they never
-				leave registers. The arithmetic is trivial — the whole problem is memory traffic, so removing passes
-				removes time.</p>
-			<div class="demo" id="w-fuse">
-				<div class="ladhead"><span>cumulative speedup</span><span class="ladTot">1.0×</span></div>
-				<div class="ladder"></div>
-				<div class="tricks"></div>
-				<p class="trickwhy">Toggle a technique.</p>
-				<div class="readout five">
-					<div><span class="k rSpd">1.0×</span><span class="l">speedup</span></div>
-					<div><span class="k rByte">—</span><span class="l">bytes / candidate</span></div>
-					<div><span class="k rBw">—</span><span class="l">achieved bandwidth</span></div>
-					<div><span class="k rAi">—</span><span class="l">FLOP / byte</span></div>
-					<div><span class="k rBound">—</span><span class="l">regime</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Gains compose multiplicatively, so the stack matters more than any one trick.
-				Fusion and precision are exact byte ratios you can derive from the shapes; the microarchitectural
-				factors are typical magnitudes for a bandwidth-bound gather kernel, not measurements. All of it is
-				chasing the same ceiling — a dot product does two FLOPs per element read, so arithmetic intensity sits
-				far below the ~10–20 FLOP/byte where an accelerator turns compute-bound. Stacked, this class of
-				optimization lands around an order of magnitude at the kernel level; end-to-end gains land nearer 2×
-				once the stages it never touches start to dominate.</p>
-		</section>
+
+
+
+
+
+
+
 
 		<section>
-			<h2>Architecture</h2>
-			<div class="tabs" id="diagTabs">
-				<button class="chip on" type="button" data-diagram="serving">Serving path</button>
-				<button class="chip" type="button" data-diagram="rollout">Model rollout</button>
-			</div>
-
-			<figure class="diagram" id="dg-serving">
-				<div class="dgscroll">
-				<svg viewBox="0 0 1000 336" role="img"
-					aria-label="Serving path: a request fans out to parallel index-match and model-retrieval paths, which merge before multi-stage ranking.">
-					<defs>
-						<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
-							orient="auto-start-reverse">
-							<path d="M0,0 L10,5 L0,10 z" class="head" />
-						</marker>
-					</defs>
-
-					<g class="node alt" data-id="corpus" tabindex="0" role="button">
-						<rect x="140" y="0" width="160" height="44" rx="7" />
-						<text x="220" y="20">Ad corpus</text>
-						<text x="220" y="35" class="sub">the eligible set</text>
-					</g>
-					<g class="node alt" data-id="models" tabindex="0" role="button">
-						<rect x="140" y="292" width="160" height="44" rx="7" />
-						<text x="220" y="312">Models + embeddings</text>
-						<text x="220" y="327" class="sub">served on GPU</text>
-					</g>
-
-					<g class="node" data-id="req" tabindex="0" role="button">
-						<rect x="8" y="133" width="104" height="62" rx="7" />
-						<text x="60" y="159">Request</text>
-						<text x="60" y="177" class="sub">query + context</text>
-					</g>
-
-					<g class="node" data-id="cpu" tabindex="0" role="button">
-						<rect x="140" y="62" width="160" height="62" rx="7" />
-						<text x="220" y="88">Index match</text>
-						<text x="220" y="106" class="sub">inverted index · targeting</text>
-					</g>
-					<g class="node hot" data-id="gpu" tabindex="0" role="button">
-						<rect x="140" y="204" width="160" height="62" rx="7" />
-						<text x="220" y="230">Model retrieval</text>
-						<text x="220" y="248" class="sub">learned · on GPU</text>
-					</g>
-
-					<g class="node" data-id="blend" tabindex="0" role="button">
-						<rect x="328" y="133" width="110" height="62" rx="7" />
-						<text x="383" y="159">Blend</text>
-						<text x="383" y="177" class="sub">merge · dedup</text>
-					</g>
-					<g class="node" data-id="pre" tabindex="0" role="button">
-						<rect x="466" y="133" width="110" height="62" rx="7" />
-						<text x="521" y="159">Pre-rank</text>
-						<text x="521" y="177" class="sub">light model</text>
-					</g>
-					<g class="node hot" data-id="rank" tabindex="0" role="button">
-						<rect x="604" y="133" width="110" height="62" rx="7" />
-						<text x="659" y="159">Rank</text>
-						<text x="659" y="177" class="sub">GPU batched</text>
-					</g>
-					<g class="node hot" data-id="final" tabindex="0" role="button">
-						<rect x="742" y="133" width="110" height="62" rx="7" />
-						<text x="797" y="159">Final rank</text>
-						<text x="797" y="177" class="sub">heavy model</text>
-					</g>
-					<g class="node ok" data-id="auction" tabindex="0" role="button">
-						<rect x="880" y="133" width="104" height="62" rx="7" />
-						<text x="932" y="159">Auction</text>
-						<text x="932" y="177" class="sub">order + price</text>
-					</g>
-
-					<path class="edge" d="M112,164 C126,164 126,93 140,93" marker-end="url(#ar)" />
-					<path class="edge" d="M112,164 C126,164 126,235 140,235" marker-end="url(#ar)" />
-					<path class="edge" d="M300,93 C314,93 314,164 328,164" marker-end="url(#ar)" />
-					<path class="edge" d="M300,235 C314,235 314,164 328,164" marker-end="url(#ar)" />
-					<path class="edge dash" d="M220,44 V62" marker-end="url(#ar)" />
-					<path class="edge dash" d="M220,292 V266" marker-end="url(#ar)" />
-					<path class="edge" d="M438,164 H466" marker-end="url(#ar)" />
-					<path class="edge" d="M576,164 H604" marker-end="url(#ar)" />
-					<path class="edge" d="M714,164 H742" marker-end="url(#ar)" />
-					<path class="edge" d="M852,164 H880" marker-end="url(#ar)" />
-
-					<text class="elabel" x="318" y="72">parallel</text>
-				</svg>
-				</div>
-				<figcaption id="cap-serving">Select a stage.</figcaption>
-			</figure>
-
-			<figure class="diagram hidden" id="dg-rollout">
-				<div class="dgscroll">
-				<svg viewBox="0 0 850 268" role="img"
-					aria-label="Model rollout: artifact is downloaded, validated, warmed up, then activated.">
-					<g class="node" data-id="art" tabindex="0" role="button">
-						<rect x="10" y="30" width="150" height="56" rx="7" />
-						<text x="85" y="56">Artifact</text>
-						<text x="85" y="74" class="sub">published</text>
-					</g>
-					<g class="node" data-id="dl" tabindex="0" role="button">
-						<rect x="190" y="30" width="150" height="56" rx="7" />
-						<text x="265" y="56">Download</text>
-						<text x="265" y="74" class="sub">bounded concurrency</text>
-					</g>
-					<g class="node hot" data-id="val" tabindex="0" role="button">
-						<rect x="370" y="30" width="150" height="56" rx="7" />
-						<text x="445" y="56">Validate</text>
-						<text x="445" y="74" class="sub">staleness + coverage</text>
-					</g>
-					<g class="node" data-id="warm" tabindex="0" role="button">
-						<rect x="550" y="30" width="130" height="56" rx="7" />
-						<text x="615" y="56">Warmup</text>
-						<text x="615" y="74" class="sub">first tokens</text>
-					</g>
-					<g class="node ok" data-id="act" tabindex="0" role="button">
-						<rect x="710" y="30" width="130" height="56" rx="7" />
-						<text x="775" y="63">Active</text>
-					</g>
-
-					<g class="node bad" data-id="blk" tabindex="0" role="button">
-						<rect x="370" y="180" width="150" height="56" rx="7" />
-						<text x="445" y="206">Blocked</text>
-						<text x="445" y="224" class="sub">alert on-call</text>
-					</g>
-					<g class="node alt" data-id="hold" tabindex="0" role="button">
-						<rect x="590" y="180" width="180" height="56" rx="7" />
-						<text x="680" y="206">Previous model holds</text>
-						<text x="680" y="224" class="sub">no cold tier</text>
-					</g>
-
-					<path class="edge" d="M160,58 H190" marker-end="url(#ar)" />
-					<path class="edge" d="M340,58 H370" marker-end="url(#ar)" />
-					<path class="edge" d="M520,58 H550" marker-end="url(#ar)" />
-					<path class="edge" d="M680,58 H710" marker-end="url(#ar)" />
-					<path class="edge dash" d="M445,86 V180" marker-end="url(#ar)" />
-					<path class="edge dash" d="M520,208 H590" marker-end="url(#ar)" />
-					<text class="elabel" x="455" y="140">stale</text>
-					<text class="elabel" x="533" y="60" style="display:none">fresh</text>
-				</svg>
-				</div>
-				<figcaption id="cap-rollout">Select a step.</figcaption>
-			</figure>
-		</section>
-
-		<section>
-			<h2>Retrieval Funnel</h2>
-			<p class="note">Millions of candidates in, a handful out. Both retrieval paths run in parallel, then
-				merge. Drag a stage — everything the early stages drop is GPU time never spent.</p>
-			<div class="demo">
-				<div class="stages" id="stages"></div>
-				<div class="readout">
-					<div><span class="k" id="fOut">—</span><span class="l">survivors</span></div>
-					<div><span class="k" id="fLat">—</span><span class="l">latency</span></div>
-					<div><span class="k" id="fGpu">—</span><span class="l">GPU share</span></div>
-					<div><span class="k" id="fVerdict">—</span><span class="l">100 ms budget</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Illustrative model. Per-stage cost is a fixed price per candidate examined.</p>
-		</section>
-
-		<section>
-			<h2>Bounded Top-K Buffer</h2>
-			<p class="note">Ranked candidates arrive faster than the latency budget allows sorting. Keep the best K
-				— but pay neither a full sort nor a heap update per item. Admit into a buffer of m·K; when it
-				fills, partition once and keep the best K. The discarded half is overwritten, never reallocated.
-			</p>
-			<div class="demo" id="w-topk">
-				<div class="tkhead">
-					<span>buffer · <span class="tkCap">16</span> slots</span>
-					<span class="tkPhase">filling</span>
-				</div>
-				<div class="tkslots"></div>
-				<div class="tkbar">
-					<span>threshold <strong class="tkThr">—</strong></span>
-					<span>stream <strong class="tkPos">0 / 0</strong></span>
-				</div>
-				<div class="wctrls">
-					<label>capacity K <output class="kOut">8</output>
-						<input type="range" class="kIn" min="4" max="16" value="8" aria-label="Capacity K" />
-					</label>
-					<label>multiplier m <output class="mOut">2</output>
-						<input type="range" class="mIn" min="2" max="4" value="2" aria-label="Buffer multiplier" />
-					</label>
-				</div>
-				<div class="wactions">
-					<button class="chip play" type="button">Play</button>
-					<button class="chip step" type="button">Step</button>
-					<button class="chip reset" type="button">Reset</button>
-				</div>
-				<div class="readout five">
-					<div><span class="k rSeen">0</span><span class="l">seen</span></div>
-					<div><span class="k rAdm">0</span><span class="l">admitted</span></div>
-					<div><span class="k rRej">0</span><span class="l">fast-rejected</span></div>
-					<div><span class="k rComp">0</span><span class="l">partitions</span></div>
-					<div><span class="k rRate">—</span><span class="l">rejected in O(1)</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Raising m buys fewer partitions with linearly more memory. Worst case the
-				partition work amortizes to m/(m-1) per admitted item — 2.00 at m=2, 1.50 at m=3. In practice the
-				boundary suppresses admissions so hard that admits grow like K·ln(N/K), and partitions are rarer
-				still. Average O(N) overall, against O(N log K) for a heap.</p>
-		</section>
-
-		<section>
-			<h2>Bloom Filter</h2>
-			<p class="note">Learned retrieval optimises for relevance, but eligibility is a hard constraint — who
-				an advertiser will pay to reach, what budget is left, what policy allows. A model can happily
-				surface a candidate that fails all three. Checking exactly is expensive on high-cardinality
-				attributes, and an ineligible candidate that survives doesn't just waste compute: it occupies a
-				slot in a fixed-width funnel that an eligible one could have had. A Bloom filter answers
-				"definitely not present" in constant time and constant space, paying for it with false positives.
-				Cheap rejects up front, exact check only on what survives — the filter is never the authority.</p>
-			<div class="demo" id="w-bloom">
-				<div class="bits"></div>
-				<p class="bloomsay">Insert a few keys, then probe for one that was never added.</p>
-				<div class="picker">
-					<span class="pk">bits (m)</span>
-					<button class="chip" type="button" data-m="32">32</button>
-					<button class="chip on" type="button" data-m="64">64</button>
-					<button class="chip" type="button" data-m="128">128</button>
-				</div>
-				<div class="picker">
-					<span class="pk">hashes (k)</span>
-					<button class="chip" type="button" data-k="1">1</button>
-					<button class="chip" type="button" data-k="2">2</button>
-					<button class="chip on" type="button" data-k="3">3</button>
-					<button class="chip" type="button" data-k="5">5</button>
-					<button class="chip" type="button" data-k="8">8</button>
-				</div>
-				<div class="wactions">
-					<button class="chip bIns" type="button">Insert key</button>
-					<button class="chip bProbe" type="button">Probe absent key</button>
-					<button class="chip bReset" type="button">Reset</button>
-				</div>
-				<div class="readout five">
-					<div><span class="k rN">0</span><span class="l">keys inserted</span></div>
-					<div><span class="k rFill">0%</span><span class="l">bits set</span></div>
-					<div><span class="k rFprM">—</span><span class="l">false positive, measured</span></div>
-					<div><span class="k rFprT">—</span><span class="l">predicted</span></div>
-					<div><span class="k rOptK">—</span><span class="l">best k here</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">False positive rate is (1 − e^(−kn/m))^k, minimised at k = (m/n)·ln2. Measured
-				value samples 4,000 absent keys. More hashes help until they fill the array, then hurt — the reason a
-				filter has to be sized against the load it will actually see. The closed form assumes perfectly
-				independent hashing, so once the array saturates it drifts from what any concrete hash function
-				really does; showing both numbers is the point.</p>
-		</section>
-
-		<section>
-			<h2>Request Slicing</h2>
-			<p class="note">To spend more capacity on one request you split it across workers — and the split has to
-				be exactly disjoint. Slicing on index position is cheap, until replicas refresh on their own schedules
-				and the same item sits at a different position on each. Slices then overlap and gaps open: candidates
-				scored twice, others silently dropped. Slicing on a stable attribute of the item costs more and is
-				worth it, because a retrieval path that quietly loses candidates is worse than a slower one.</p>
-			<div class="demo" id="w-slice">
-				<div class="qhead"><span>one request · 96 items across workers</span><span class="slVerdict">—</span></div>
-				<div class="slgrid"></div>
-				<div class="legend">
-					<span><span class="sw ok1"></span> claimed once</span>
-					<span><span class="sw dup"></span> claimed twice — duplicated work</span>
-					<span><span class="sw gap"></span> claimed by nobody — dropped</span>
-				</div>
-				<div class="picker">
-					<span class="pk">slice by</span>
-					<button class="chip on" type="button" data-mode="pos">index position</button>
-					<button class="chip" type="button" data-mode="key">stable key</button>
-				</div>
-				<div class="picker">
-					<span class="pk">replicas stale</span>
-					<button class="chip on" type="button" data-skew="0">none</button>
-					<button class="chip" type="button" data-skew="25">some</button>
-					<button class="chip" type="button" data-skew="50">half</button>
-				</div>
-				<div class="picker">
-					<span class="pk">workers</span>
-					<button class="chip" type="button" data-w="4">4</button>
-					<button class="chip on" type="button" data-w="8">8</button>
-					<button class="chip" type="button" data-w="16">16</button>
-				</div>
-				<div class="readout five">
-					<div><span class="k rOnce">—</span><span class="l">scored once</span></div>
-					<div><span class="k rDup">—</span><span class="l">duplicated</span></div>
-					<div><span class="k rGap">—</span><span class="l">dropped</span></div>
-					<div><span class="k rWaste">—</span><span class="l">wasted work</span></div>
-					<div><span class="k rRecall">—</span><span class="l">recall</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Position-based slicing is correct only while every replica agrees on where an item
-				lives. Staggered index updates break that agreement, and the failure is silent — no error, just a
-				quieter funnel. Keying the split on an attribute that travels with the item makes the partition
-				replica-independent, which is the property that actually matters.</p>
-		</section>
-
-		<section>
-			<h2>Interleaved Weighted Round Robin</h2>
-			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
-				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape
-				of running several retrieval models in parallel and deciding how much of the result each one owns.
-			</p>
-			<div class="demo" id="w-iwrr">
-				<div class="iwrr">
-					<div class="qs"></div>
-					<div>
-						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
-						<div class="chips out"></div>
-					</div>
-				</div>
-				<div class="wctrls"></div>
-				<div class="wactions">
-					<button class="chip play" type="button">Play</button>
-					<button class="chip step" type="button">Step</button>
-					<button class="chip reset" type="button">Reset</button>
-				</div>
-				<div class="readout">
-					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
-					<div><span class="k rMix">—</span><span class="l">output mix</span></div>
-					<div><span class="k rRatio">—</span><span class="l">target ratio</span></div>
-					<div><span class="k rRound">1</span><span class="l">round</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Deterministic, and order-preserving within each queue.</p>
-		</section>
-
-		<section>
-			<h2>Unique-Value Blender</h2>
-			<p class="note">Supplementary sources keep surfacing candidates the main queue already has. Naive dedup
-				credits whoever emits first. This one remembers main membership and <em>reattributes</em> the
-				duplicate, so a supplementary slot is only spent on genuinely new supply. The catch: main is a
-				bounded top-K filled on the fly, so membership is only knowable inside the window.</p>
-			<div class="demo" id="w-uvb">
-				<div class="iwrr">
-					<div class="qs"></div>
-					<div>
-						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
-						<div class="chips out"></div>
-						<div class="legend">
-							<span><span class="it a">12</span> main</span>
-							<span><span class="it a re">12</span> reattributed</span>
-							<span><span class="it b miss">12</span> outside window</span>
-							<span><span class="it b gone">12</span> dropped</span>
-						</div>
-					</div>
-				</div>
-				<div class="wctrls"></div>
-				<div class="wactions">
-					<button class="chip play" type="button">Play</button>
-					<button class="chip step" type="button">Step</button>
-					<button class="chip reset" type="button">Reset</button>
-					<label>capacity <output class="capOut">12</output>
-						<input type="range" class="cap" min="4" max="24" value="12" aria-label="Output capacity" />
-					</label>
-				</div>
-				<div class="readout five">
-					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
-					<div><span class="k rRe">0</span><span class="l">reattributed</span></div>
-					<div><span class="k rUv">—</span><span class="l">unique value</span></div>
-					<div><span class="k rMiss">0</span><span class="l">outside window</span></div>
-					<div><span class="k rMem">0</span><span class="l">resident / 2K</span></div>
-				</div>
-			</div>
-			<p class="disclaimer">Reattribution costs the supplementary source its slot but not its credit. Items
-				evicted from the bounded window before a supplementary match arrives cannot be reattributed — those
-				are counted separately.</p>
-		</section>
-
-		<section>
-			<h2>Selected Work</h2>
+			<h2>Work</h2>
+			<p class="note">What I built, and the mechanics underneath it. Every model linked below runs in the
+				browser. <a href="systems.html">Open all &rarr;</a></p>
 			<div class="filters" id="filters">
 				<button class="chip on" type="button" data-tag="all">All</button>
 				<button class="chip" type="button" data-tag="gpu">GPU</button>
 				<button class="chip" type="button" data-tag="retrieval">Retrieval</button>
 				<button class="chip" type="button" data-tag="platform">Platform</button>
 			</div>
-			<ol class="work" id="work">
-				<li data-tags="retrieval gpu">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>Neural retrieval, in production</h3><span class="caret"></span>
+			<div class="workx">
+				<div class="wlist" role="tablist" aria-label="Selected work" aria-orientation="vertical">
+					<button class="wtab on" role="tab" type="button"
+						id="wt1" aria-controls="wp1" aria-selected="true"
+						tabindex="0" data-tags="retrieval gpu">
+						<em>01</em><span>Neural retrieval, in production</span>
 					</button>
-					<div class="wbody">
-						<p>Built serving integration for an embedding-based matcher: request-level experiment
-							configuration, dry-run evaluation, statistics transport, embedding and threshold sync.
-							Added recall-aware dynamic thresholds.</p>
-					</div>
-				</li>
-				<li data-tags="gpu">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>Inference reliability on GPU</h3><span class="caret"></span>
+					<button class="wtab" role="tab" type="button"
+						id="wt2" aria-controls="wp2" aria-selected="false"
+						tabindex="-1" data-tags="gpu">
+						<em>02</em><span>Inference reliability on GPU</span>
 					</button>
-					<div class="wbody">
-						<p>Model and data staleness tracking, bounded concurrency on embedding downloads,
-							model-loading fail-safes, and guards blocking experimental models from fallback tiers.</p>
-					</div>
-				</li>
-				<li data-tags="retrieval">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>A cheaper first stage</h3><span class="caret"></span>
+					<button class="wtab" role="tab" type="button"
+						id="wt3" aria-controls="wp3" aria-selected="false"
+						tabindex="-1" data-tags="retrieval">
+						<em>03</em><span>A cheaper first stage</span>
 					</button>
-					<div class="wbody">
-						<p>Introduced a lightweight matching stage ahead of the main retrieval path. Onboarded
-							matchers, added cross-stage data passing, reduced CPU per request.</p>
-					</div>
-				</li>
-				<li data-tags="platform retrieval">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>Shared multi-stage ranking layer</h3><span class="caret"></span>
+					<button class="wtab" role="tab" type="button"
+						id="wt4" aria-controls="wp4" aria-selected="false"
+						tabindex="-1" data-tags="platform retrieval">
+						<em>04</em><span>Shared multi-stage ranking layer</span>
 					</button>
-					<div class="wbody">
-						<p>Replaced per-route heuristics with one ordering and selection interface spanning four
-							ranking stages. Onboarded partner teams across multiple surfaces.</p>
-					</div>
-				</li>
-				<li data-tags="platform">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>Configuration tuning, automated</h3><span class="caret"></span>
+					<button class="wtab" role="tab" type="button"
+						id="wt5" aria-controls="wp5" aria-selected="false"
+						tabindex="-1" data-tags="platform retrieval">
+						<em>05</em><span>Deterministic request slicing</span>
 					</button>
-					<div class="wbody">
-						<p>Gradient-based system that proposes, ramps, and evaluates serving configurations —
-							replacing hand-authored experiments.</p>
+				</div>
+				<div class="wpanes">
+					<div class="wpane on" role="tabpanel" id="wp1"
+						aria-labelledby="wt1">
+						<h3>Neural retrieval, in production</h3>
+						<p>Built serving integration for an embedding-based matcher: request-level experiment configuration, dry-run evaluation, statistics transport, embedding and threshold sync. Added recall-aware dynamic thresholds.</p>
+						<div class="mech">
+							<span class="mechlab">Mechanics</span>
+							<a href="systems.html#fused">Fused Embedding Kernel</a>
+							<a href="systems.html#coalescing">Coalescing</a>
+							<a href="systems.html#reduction">Reduction</a>
+						</div>
 					</div>
-				</li>
-				<li data-tags="platform">
-					<button class="wtoggle" type="button" aria-expanded="false">
-						<h3>Request-level tracing</h3><span class="caret"></span>
-					</button>
-					<div class="wbody">
-						<p>Per-source observability through the serving path: queue sizes, emitted volume,
-							deduplication and attribution, plumbed into request traces.</p>
+					<div class="wpane" role="tabpanel" id="wp2"
+						aria-labelledby="wt2" hidden>
+						<h3>Inference reliability on GPU</h3>
+						<p>Model and data staleness tracking, bounded concurrency on embedding downloads, model-loading fail-safes, and guards blocking experimental models from fallback tiers.</p>
+						<div class="mech">
+							<span class="mechlab">Mechanics</span>
+							<a href="systems.html#architecture">Model rollout</a>
+						</div>
 					</div>
-				</li>
-			</ol>
+					<div class="wpane" role="tabpanel" id="wp3"
+						aria-labelledby="wt3" hidden>
+						<h3>A cheaper first stage</h3>
+						<p>Introduced a lightweight matching stage ahead of the main retrieval path. Onboarded matchers, added cross-stage data passing, reduced CPU per request.</p>
+						<div class="mech">
+							<span class="mechlab">Mechanics</span>
+							<a href="systems.html#funnel">Retrieval Funnel</a>
+							<a href="systems.html#topk">Bounded Top-K Buffer</a>
+							<a href="systems.html#bloom">Bloom Filter</a>
+						</div>
+					</div>
+					<div class="wpane" role="tabpanel" id="wp4"
+						aria-labelledby="wt4" hidden>
+						<h3>Shared multi-stage ranking layer</h3>
+						<p>Replaced per-route heuristics with one ordering and selection interface spanning four ranking stages. Onboarded partner teams across multiple surfaces.</p>
+						<div class="mech">
+							<span class="mechlab">Mechanics</span>
+							<a href="systems.html#iwrr">Interleaved Weighted Round Robin</a>
+							<a href="systems.html#blender">Unique-Value Blender</a>
+							<a href="systems.html#architecture">Serving path</a>
+						</div>
+					</div>
+					<div class="wpane" role="tabpanel" id="wp5"
+						aria-labelledby="wt5" hidden>
+						<h3>Deterministic request slicing</h3>
+						<p>Designed how one request splits across additional capacity. A position-based partition was cheap but replica-dependent — staggered index refreshes made it duplicate some candidates and silently drop others. Moved it to a key-based split that is disjoint on every replica, accepting a performance cost for correctness.</p>
+						<div class="mech">
+							<span class="mechlab">Mechanics</span>
+							<a href="systems.html#slicing">Request Slicing</a>
+						</div>
+					</div>
+				</div>
+			</div>
 		</section>
 
 		<section>
 			<h2>Background</h2>
-			<dl class="timeline">
-				<div>
-					<dt>2021 — present</dt>
-					<dd><strong>Meta</strong> · Staff Software Engineer, Retrieval Platform · New York</dd>
+			<p class="note">The middle two overlap — I did the masters while working.</p>
+			<div class="tl">
+				<div class="tlrow tlhead">
+					<div></div>
+					<div class="tlaxis"><span>2017</span><span>2019</span><span>2021</span><span>2023</span><span>2025</span></div>
+					<div></div>
 				</div>
-				<div>
-					<dt>Georgia Tech</dt>
-					<dd>M.S. Computer Science</dd>
+				<div class="tlrow">
+					<div class="tlname"><strong>Meta</strong><span>Staff Software Engineer, Retrieval Platform · New York</span></div>
+					<div class="tltrack">
+						<span class="tlbar now" style="--l:48.2%;--w:51.8%"></span>
+					</div>
+					<div class="tlyears">2021 — present</div>
 				</div>
-				<div>
-					<dt>Florida</dt>
-					<dd>B.S. Computer Science</dd>
+				<div class="tlrow">
+					<div class="tlname"><strong>Georgia Tech</strong><span>M.S. Computer Science</span></div>
+					<div class="tltrack">
+						<span class="tlbar " style="--l:51.3%;--w:20.5%"></span>
+					</div>
+					<div class="tlyears">2022 — 2024</div>
 				</div>
-				<div>
-					<dt>USAMO</dt>
-					<dd>Finalist</dd>
+				<div class="tlrow">
+					<div class="tlname"><strong>Florida</strong><span>B.S. Computer Science, Mathematics, Statistics</span></div>
+					<div class="tltrack">
+						<span class="tlbar " style="--l:0.0%;--w:45.1%"></span>
+					</div>
+					<div class="tlyears">2017 — 2021</div>
 				</div>
-			</dl>
+			</div>
+			<p class="cred">USAMO finalist</p>
 		</section>
 	</main>
 

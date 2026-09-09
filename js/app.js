@@ -6,31 +6,35 @@
 
 	/* Theme -------------------------------------------------------------- */
 	var themeBtn = $('#theme');
-	themeBtn.addEventListener('click', function () {
-		var dark = document.documentElement.dataset.theme === 'dark';
-		if (dark) { delete document.documentElement.dataset.theme; }
-		else { document.documentElement.dataset.theme = 'dark'; }
-		try { localStorage.setItem('theme', dark ? 'light' : 'dark'); } catch (e) { }
-	});
+	if (themeBtn) {
+		themeBtn.addEventListener('click', function () {
+			var dark = document.documentElement.dataset.theme === 'dark';
+			if (dark) { delete document.documentElement.dataset.theme; }
+			else { document.documentElement.dataset.theme = 'dark'; }
+			try { localStorage.setItem('theme', dark ? 'light' : 'dark'); } catch (e) { }
+		});
+	}
 
 	/* Copy email --------------------------------------------------------- */
 	var copyBtn = $('#copyEmail');
-	copyBtn.addEventListener('click', function () {
-		var addr = copyBtn.dataset.email;
-		var done = function () {
-			copyBtn.textContent = 'Copied';
-			copyBtn.classList.add('done');
-			setTimeout(function () {
-				copyBtn.textContent = 'Copy email';
-				copyBtn.classList.remove('done');
-			}, 1600);
-		};
-		if (navigator.clipboard) {
-			navigator.clipboard.writeText(addr).then(done, function () { location.href = 'mailto:' + addr; });
-		} else {
-			location.href = 'mailto:' + addr;
-		}
-	});
+	if (copyBtn) {
+		copyBtn.addEventListener('click', function () {
+			var addr = copyBtn.dataset.email;
+			var done = function () {
+				copyBtn.textContent = 'Copied';
+				copyBtn.classList.add('done');
+				setTimeout(function () {
+					copyBtn.textContent = 'Copy email';
+					copyBtn.classList.remove('done');
+				}, 1600);
+			};
+			if (navigator.clipboard) {
+				navigator.clipboard.writeText(addr).then(done, function () { location.href = 'mailto:' + addr; });
+			} else {
+				location.href = 'mailto:' + addr;
+			}
+		});
+	}
 
 	/* Diagrams ----------------------------------------------------------- */
 	var DESC = {
@@ -100,43 +104,45 @@
 	};
 
 	var stagesEl = $('#stages');
-	STAGES.forEach(function (s, i) {
-		var row = document.createElement('div');
-		row.className = 'stage';
-		row.innerHTML =
-			'<span class="nm">' + s.nm + '</span>' +
-			'<div class="bar"><span class="fill"></span></div>' +
-			'<span class="ct"></span>' +
-			'<input type="range" min="1" max="100" value="' + Math.round(Math.pow(s.keep, 1 / 3) * 100) +
-			'" aria-label="' + s.nm + ' keep rate" data-i="' + i + '" />' +
-			'<span class="kp"></span>';
-		stagesEl.appendChild(row);
-	});
-
-	function runFunnel() {
-		var n = START, lat = 0, gpu = 0;
-		$$('#stages .stage').forEach(function (row, i) {
-			var r = parseInt($('input', row).value, 10) / 100;
-			var keep = Math.pow(r, 3);
-			var examined = n;
-			var cost = examined * STAGES[i].cost;
-			lat += cost;
-			if (STAGES[i].gpu) { gpu += cost; }
-			n = Math.max(1, examined * keep);
-			$('.fill', row).style.width = (Math.log10(Math.max(n, 1)) / LOGMAX * 100) + '%';
-			$('.ct', row).textContent = fmt(n);
-			$('.kp', row).textContent = 'keeps ' + pct(keep);
+	if (stagesEl) {
+		STAGES.forEach(function (s, i) {
+			var row = document.createElement('div');
+			row.className = 'stage';
+			row.innerHTML =
+				'<span class="nm">' + s.nm + '</span>' +
+				'<div class="bar"><span class="fill"></span></div>' +
+				'<span class="ct"></span>' +
+				'<input type="range" min="1" max="100" value="' + Math.round(Math.pow(s.keep, 1 / 3) * 100) +
+				'" aria-label="' + s.nm + ' keep rate" data-i="' + i + '" />' +
+				'<span class="kp"></span>';
+			stagesEl.appendChild(row);
 		});
-		$('#fOut').textContent = fmt(n);
-		$('#fLat').textContent = lat.toFixed(1) + ' ms';
-		$('#fGpu').textContent = lat > 0 ? Math.round(gpu / lat * 100) + '%' : '0%';
-		var v = $('#fVerdict');
-		v.textContent = lat <= BUDGET ? 'within' : 'over';
-		v.className = 'k ' + (lat <= BUDGET ? 'under' : 'over');
-	}
 
-	stagesEl.addEventListener('input', runFunnel);
-	runFunnel();
+		var runFunnel = function () {
+			var n = START, lat = 0, gpu = 0;
+			$$('#stages .stage').forEach(function (row, i) {
+				var r = parseInt($('input', row).value, 10) / 100;
+				var keep = Math.pow(r, 3);
+				var examined = n;
+				var cost = examined * STAGES[i].cost;
+				lat += cost;
+				if (STAGES[i].gpu) { gpu += cost; }
+				n = Math.max(1, examined * keep);
+				$('.fill', row).style.width = (Math.log10(Math.max(n, 1)) / LOGMAX * 100) + '%';
+				$('.ct', row).textContent = fmt(n);
+				$('.kp', row).textContent = 'keeps ' + pct(keep);
+			});
+			$('#fOut').textContent = fmt(n);
+			$('#fLat').textContent = lat.toFixed(1) + ' ms';
+			$('#fGpu').textContent = lat > 0 ? Math.round(gpu / lat * 100) + '%' : '0%';
+			var v = $('#fVerdict');
+			v.textContent = lat <= BUDGET ? 'within' : 'over';
+			v.className = 'k ' + (lat <= BUDGET ? 'under' : 'over');
+		};
+
+		stagesEl.addEventListener('input', runFunnel);
+		runFunnel();
+	}
 
 	/* Blenders -------------------------------------------------------------
 	   Interleaved weighted round robin: in round r, every queue with weight
@@ -765,23 +771,211 @@
 
 	makeSlice({ root: '#w-slice' });
 
-	/* Selected work ------------------------------------------------------ */
-	$$('.wtoggle').forEach(function (t) {
-		t.addEventListener('click', function () {
-			var open = t.getAttribute('aria-expanded') === 'true';
-			t.setAttribute('aria-expanded', String(!open));
-			t.nextElementSibling.classList.toggle('open', !open);
-		});
-	});
+	/* Coalescing -----------------------------------------------------------
+	   Memory is served in 32B sectors. A warp's 32 lanes are coalesced into
+	   the smallest covering set, and you pay for whole sectors regardless of
+	   how much of each you use. On a gather each lane lands in its own
+	   sector, so the only lever left is asking for more bytes per lane. */
+	function makeCoal(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var qa = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+		var SEC = 32, LANES = 32, NSEC = 96, PAT = 'gather', WID = 4;
 
-	$$('#filters .chip').forEach(function (b) {
-		b.addEventListener('click', function () {
-			$$('#filters .chip').forEach(function (o) { o.classList.remove('on'); });
-			b.classList.add('on');
-			var tag = b.dataset.tag;
-			$$('#work li').forEach(function (li) {
-				li.classList.toggle('out', tag !== 'all' && li.dataset.tags.indexOf(tag) === -1);
+		function mix(x) {
+			x = Math.imul(x, 2654435761) >>> 0;
+			x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0;
+			x ^= x >>> 13; x = Math.imul(x, 3266489917) >>> 0;
+			return (x ^ (x >>> 16)) >>> 0;
+		}
+
+		function addrOf(t) {
+			var span = NSEC * SEC - WID;
+			if (PAT === 'contig') { return t * WID; }
+			// Stride exactly tiles the window so lanes never wrap and collide.
+			if (PAT === 'stride') { return t * (NSEC * SEC / LANES); }
+			return (mix(t + 1) % Math.floor(span / WID)) * WID;   // aligned random
+		}
+
+		function render() {
+			var used = new Array(NSEC).fill(0);
+			for (var t = 0; t < LANES; t++) {
+				var a = addrOf(t);
+				for (var b = a; b < a + WID; b++) {
+					var s = Math.floor(b / SEC);
+					if (s >= 0 && s < NSEC) { used[s]++; }
+				}
+			}
+			var fetched = 0, html = '';
+			for (var i = 0; i < NSEC; i++) {
+				var cls = used[i] === 0 ? 'sec' : (used[i] >= SEC ? 'sec full' : 'sec part');
+				if (used[i] > 0) { fetched++; }
+				html += '<span class="' + cls + '"></span>';
+			}
+			q('.sectors').innerHTML = html;
+
+			var want = LANES * WID, got = fetched * SEC;
+			var eff = got > 0 ? want / got : 0;
+			q('.rTx').textContent = fetched;
+			q('.rReq').textContent = want + ' B';
+			q('.rGot').textContent = got + ' B';
+			q('.rEff').textContent = Math.round(eff * 100) + '%';
+			q('.coEff').textContent = Math.round(eff * 100) + '% of fetched bytes used';
+			q('.rLoads').textContent = Math.ceil(256 / WID);
+		}
+
+		qa('.picker').forEach(function (row) {
+			row.addEventListener('click', function (e) {
+				var b = e.target.closest('.chip');
+				if (!b) { return; }
+				Array.prototype.slice.call(row.querySelectorAll('.chip'))
+					.forEach(function (o) { o.classList.remove('on'); });
+				b.classList.add('on');
+				if (b.dataset.pat) { PAT = b.dataset.pat; }
+				if (b.dataset.wid) { WID = +b.dataset.wid; }
+				render();
 			});
 		});
-	});
+
+		render();
+	}
+
+	makeCoal({ root: '#w-coal' });
+
+	/* Warp reduction -------------------------------------------------------
+	   Same log-depth tree either way. Shuffles read a neighbour's register
+	   directly; the shared-memory version needs a barrier per level and an
+	   array that costs occupancy. */
+	function makeRed(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var qa = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+		var N = 32, DEPTH = 5, MODE = 'shfl', vals = [], step = 0, timer = null;
+
+		function reset() {
+			if (timer) { clearInterval(timer); timer = null; }
+			q('.play').textContent = 'Run';
+			q('.play').classList.remove('on');
+			vals = [];
+			for (var i = 0; i < N; i++) { vals.push(1 + (i * 7 % 9)); }
+			step = 0;
+			render();
+		}
+
+		function advance() {
+			if (step >= DEPTH) { return false; }
+			var off = N >> (step + 1);
+			for (var i = 0; i < off; i++) { vals[i] += vals[i + off]; }
+			step++;
+			return true;
+		}
+
+		function render() {
+			var live = step >= DEPTH ? 1 : N >> step;
+			var peak = Math.max.apply(null, vals);
+			q('.lanes').innerHTML = vals.map(function (v, i) {
+				var cls = 'ln';
+				if (i < live) { cls += ' live'; }
+				else if (i < (step === 0 ? N : N >> (step - 1))) { cls += ' recv'; }
+				else { cls += ' dead'; }
+				return '<span class="' + cls + '" style="height:' +
+					Math.max(2, v / peak * 72) + 'px"></span>';
+			}).join('');
+			q('.redStep').textContent = 'step ' + step + ' / ' + DEPTH;
+			q('.rActive').textContent = live;
+			q('.rDepth').textContent = DEPTH;
+			q('.rBar').textContent = MODE === 'shfl' ? '0' : String(step);
+			q('.rSmem').textContent = MODE === 'shfl' ? '0 B' : (N * 4) + ' B';
+			q('.rSum').textContent = vals[0];
+		}
+
+		qa('.picker').forEach(function (row) {
+			row.addEventListener('click', function (e) {
+				var b = e.target.closest('.chip');
+				if (!b || !b.dataset.red) { return; }
+				Array.prototype.slice.call(row.querySelectorAll('.chip'))
+					.forEach(function (o) { o.classList.remove('on'); });
+				b.classList.add('on');
+				MODE = b.dataset.red;
+				reset();
+			});
+		});
+
+		q('.step').addEventListener('click', function () { advance(); render(); });
+		q('.reset').addEventListener('click', reset);
+		q('.play').addEventListener('click', function () {
+			if (timer) { clearInterval(timer); timer = null; q('.play').textContent = 'Run'; q('.play').classList.remove('on'); return; }
+			if (step >= DEPTH) { reset(); }
+			q('.play').textContent = 'Pause';
+			q('.play').classList.add('on');
+			timer = setInterval(function () {
+				if (!advance()) {
+					clearInterval(timer); timer = null;
+					q('.play').textContent = 'Run'; q('.play').classList.remove('on');
+				}
+				render();
+			}, 520);
+		});
+
+		reset();
+	}
+
+	makeRed({ root: '#w-red' });
+
+	/* Work: master-detail ---------------------------------------------------
+	   Tabs rather than an accordion: one pane visible, instant switching,
+	   arrow-key navigable. Filtering hides tabs and falls back to the first
+	   still-visible one so the panel is never left orphaned. */
+	var tabs = $$('.wtab');
+	if (tabs.length) {
+		var panes = $$('.wpane');
+
+		var select = function (i, focus) {
+			tabs.forEach(function (t, j) {
+				var on = i === j;
+				t.classList.toggle('on', on);
+				t.setAttribute('aria-selected', String(on));
+				t.tabIndex = on ? 0 : -1;
+				panes[j].classList.toggle('on', on);
+				if (on) { panes[j].removeAttribute('hidden'); }
+				else { panes[j].setAttribute('hidden', ''); }
+			});
+			if (focus) { tabs[i].focus(); }
+		};
+
+		tabs.forEach(function (t, i) {
+			t.addEventListener('click', function () { select(i); });
+			t.addEventListener('keydown', function (e) {
+				var vis = tabs.filter(function (x) { return !x.classList.contains('out'); });
+				var at = vis.indexOf(t);
+				if (at < 0) { return; }
+				var next = null;
+				if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { next = vis[(at + 1) % vis.length]; }
+				if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { next = vis[(at - 1 + vis.length) % vis.length]; }
+				if (e.key === 'Home') { next = vis[0]; }
+				if (e.key === 'End') { next = vis[vis.length - 1]; }
+				if (next) { e.preventDefault(); select(tabs.indexOf(next), true); }
+			});
+		});
+
+		$$('#filters .chip').forEach(function (b) {
+			b.addEventListener('click', function () {
+				$$('#filters .chip').forEach(function (o) { o.classList.remove('on'); });
+				b.classList.add('on');
+				var tag = b.dataset.tag;
+				tabs.forEach(function (t) {
+					t.classList.toggle('out', tag !== 'all' && t.dataset.tags.indexOf(tag) === -1);
+				});
+				// keep a visible tab selected
+				var cur = tabs.filter(function (t) { return t.classList.contains('on'); })[0];
+				if (!cur || cur.classList.contains('out')) {
+					var first = tabs.filter(function (t) { return !t.classList.contains('out'); })[0];
+					if (first) { select(tabs.indexOf(first)); }
+				}
+			});
+		});
+	}
+
 })();

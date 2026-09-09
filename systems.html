@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description"
+		content="Interactive notes on retrieval and serving systems — GPU kernels, candidate selection, and distributing work." />
+	<meta name="author" content="Jason Chen" />
+	<title>Systems — Jason Chen</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+		rel="stylesheet" />
+	<link rel="stylesheet" href="css/style.css" />
+	<script>
+		try {
+			var t = localStorage.getItem('theme');
+			if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
+				document.documentElement.dataset.theme = 'dark';
+			}
+		} catch (e) { }
+	</script>
+</head>
+
+<body>
+	<button class="theme" id="theme" type="button" aria-label="Toggle color theme">
+		<span data-light>Dark</span><span data-dark>Light</span>
+	</button>
+
+	<header class="hero">
+		<div class="wrap">
+			<p class="eyebrow"><a class="back" href="index.html">&larr; Jason Chen</a></p>
+			<h1>Systems</h1>
+			<p class="lede">Interactive notes on the retrieval and serving problems I work on. Everything here is a
+				working model you can drive — the numbers are computed, not quoted.</p>
+		</div>
+	</header>
+
+	<nav class="subnav">
+		<div class="wrap"><a href="#overview">Overview</a> <a href="#memory">Memory &amp; Kernels</a> <a href="#selection">Selection</a> <a href="#distribution">Distribution</a></div>
+	</nav>
+
+	<main class="wrap">
+		<div class="group" id="overview">
+			<h2 class="grouph">Overview</h2>
+			<p class="groupnote">How a request actually moves, and how a model reaches production.</p>
+		</div>
+
+		<section id="architecture">
+			<h3 class="wh">Architecture</h3>
+
+			<div class="tabs" id="diagTabs">
+				<button class="chip on" type="button" data-diagram="serving">Serving path</button>
+				<button class="chip" type="button" data-diagram="rollout">Model rollout</button>
+			</div>
+
+			<figure class="diagram" id="dg-serving">
+				<div class="dgscroll">
+				<svg viewBox="0 0 1000 336" role="img"
+					aria-label="Serving path: a request fans out to parallel index-match and model-retrieval paths, which merge before multi-stage ranking.">
+					<defs>
+						<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+							orient="auto-start-reverse">
+							<path d="M0,0 L10,5 L0,10 z" class="head" />
+						</marker>
+					</defs>
+
+					<g class="node alt" data-id="corpus" tabindex="0" role="button">
+						<rect x="140" y="0" width="160" height="44" rx="7" />
+						<text x="220" y="20">Ad corpus</text>
+						<text x="220" y="35" class="sub">the eligible set</text>
+					</g>
+					<g class="node alt" data-id="models" tabindex="0" role="button">
+						<rect x="140" y="292" width="160" height="44" rx="7" />
+						<text x="220" y="312">Models + embeddings</text>
+						<text x="220" y="327" class="sub">served on GPU</text>
+					</g>
+
+					<g class="node" data-id="req" tabindex="0" role="button">
+						<rect x="8" y="133" width="104" height="62" rx="7" />
+						<text x="60" y="159">Request</text>
+						<text x="60" y="177" class="sub">query + context</text>
+					</g>
+
+					<g class="node" data-id="cpu" tabindex="0" role="button">
+						<rect x="140" y="62" width="160" height="62" rx="7" />
+						<text x="220" y="88">Index match</text>
+						<text x="220" y="106" class="sub">inverted index · targeting</text>
+					</g>
+					<g class="node hot" data-id="gpu" tabindex="0" role="button">
+						<rect x="140" y="204" width="160" height="62" rx="7" />
+						<text x="220" y="230">Model retrieval</text>
+						<text x="220" y="248" class="sub">learned · on GPU</text>
+					</g>
+
+					<g class="node" data-id="blend" tabindex="0" role="button">
+						<rect x="328" y="133" width="110" height="62" rx="7" />
+						<text x="383" y="159">Blend</text>
+						<text x="383" y="177" class="sub">merge · dedup</text>
+					</g>
+					<g class="node" data-id="pre" tabindex="0" role="button">
+						<rect x="466" y="133" width="110" height="62" rx="7" />
+						<text x="521" y="159">Pre-rank</text>
+						<text x="521" y="177" class="sub">light model</text>
+					</g>
+					<g class="node hot" data-id="rank" tabindex="0" role="button">
+						<rect x="604" y="133" width="110" height="62" rx="7" />
+						<text x="659" y="159">Rank</text>
+						<text x="659" y="177" class="sub">GPU batched</text>
+					</g>
+					<g class="node hot" data-id="final" tabindex="0" role="button">
+						<rect x="742" y="133" width="110" height="62" rx="7" />
+						<text x="797" y="159">Final rank</text>
+						<text x="797" y="177" class="sub">heavy model</text>
+					</g>
+					<g class="node ok" data-id="auction" tabindex="0" role="button">
+						<rect x="880" y="133" width="104" height="62" rx="7" />
+						<text x="932" y="159">Auction</text>
+						<text x="932" y="177" class="sub">order + price</text>
+					</g>
+
+					<path class="edge" d="M112,164 C126,164 126,93 140,93" marker-end="url(#ar)" />
+					<path class="edge" d="M112,164 C126,164 126,235 140,235" marker-end="url(#ar)" />
+					<path class="edge" d="M300,93 C314,93 314,164 328,164" marker-end="url(#ar)" />
+					<path class="edge" d="M300,235 C314,235 314,164 328,164" marker-end="url(#ar)" />
+					<path class="edge dash" d="M220,44 V62" marker-end="url(#ar)" />
+					<path class="edge dash" d="M220,292 V266" marker-end="url(#ar)" />
+					<path class="edge" d="M438,164 H466" marker-end="url(#ar)" />
+					<path class="edge" d="M576,164 H604" marker-end="url(#ar)" />
+					<path class="edge" d="M714,164 H742" marker-end="url(#ar)" />
+					<path class="edge" d="M852,164 H880" marker-end="url(#ar)" />
+
+					<text class="elabel" x="318" y="72">parallel</text>
+				</svg>
+				</div>
+				<figcaption id="cap-serving">Select a stage.</figcaption>
+			</figure>
+
+			<figure class="diagram hidden" id="dg-rollout">
+				<div class="dgscroll">
+				<svg viewBox="0 0 850 268" role="img"
+					aria-label="Model rollout: artifact is downloaded, validated, warmed up, then activated.">
+					<g class="node" data-id="art" tabindex="0" role="button">
+						<rect x="10" y="30" width="150" height="56" rx="7" />
+						<text x="85" y="56">Artifact</text>
+						<text x="85" y="74" class="sub">published</text>
+					</g>
+					<g class="node" data-id="dl" tabindex="0" role="button">
+						<rect x="190" y="30" width="150" height="56" rx="7" />
+						<text x="265" y="56">Download</text>
+						<text x="265" y="74" class="sub">bounded concurrency</text>
+					</g>
+					<g class="node hot" data-id="val" tabindex="0" role="button">
+						<rect x="370" y="30" width="150" height="56" rx="7" />
+						<text x="445" y="56">Validate</text>
+						<text x="445" y="74" class="sub">staleness + coverage</text>
+					</g>
+					<g class="node" data-id="warm" tabindex="0" role="button">
+						<rect x="550" y="30" width="130" height="56" rx="7" />
+						<text x="615" y="56">Warmup</text>
+						<text x="615" y="74" class="sub">first tokens</text>
+					</g>
+					<g class="node ok" data-id="act" tabindex="0" role="button">
+						<rect x="710" y="30" width="130" height="56" rx="7" />
+						<text x="775" y="63">Active</text>
+					</g>
+
+					<g class="node bad" data-id="blk" tabindex="0" role="button">
+						<rect x="370" y="180" width="150" height="56" rx="7" />
+						<text x="445" y="206">Blocked</text>
+						<text x="445" y="224" class="sub">alert on-call</text>
+					</g>
+					<g class="node alt" data-id="hold" tabindex="0" role="button">
+						<rect x="590" y="180" width="180" height="56" rx="7" />
+						<text x="680" y="206">Previous model holds</text>
+						<text x="680" y="224" class="sub">no cold tier</text>
+					</g>
+
+					<path class="edge" d="M160,58 H190" marker-end="url(#ar)" />
+					<path class="edge" d="M340,58 H370" marker-end="url(#ar)" />
+					<path class="edge" d="M520,58 H550" marker-end="url(#ar)" />
+					<path class="edge" d="M680,58 H710" marker-end="url(#ar)" />
+					<path class="edge dash" d="M445,86 V180" marker-end="url(#ar)" />
+					<path class="edge dash" d="M520,208 H590" marker-end="url(#ar)" />
+					<text class="elabel" x="455" y="140">stale</text>
+					<text class="elabel" x="533" y="60" style="display:none">fresh</text>
+				</svg>
+				</div>
+				<figcaption id="cap-rollout">Select a step.</figcaption>
+			</figure>
+		</section>
+
+		<div class="group" id="memory">
+			<h2 class="grouph">Memory &amp; Kernels</h2>
+			<p class="groupnote">Scoring is a random-gather reduction. Almost no arithmetic per byte, so every win is a memory win.</p>
+		</div>
+
+		<section id="fused">
+			<h3 class="wh">Fused Embedding Kernel</h3>
+
+			<p class="note">Scoring a candidate means reading its embedding and reducing it against the user's. As two
+				kernels, the gathered embeddings are written to memory and immediately read back. Fused, they never
+				leave registers. The arithmetic is trivial — the whole problem is memory traffic, so removing passes
+				removes time.</p>
+<div class="demo" id="w-fuse">
+				<div class="ladhead"><span>cumulative speedup</span><span class="ladTot">1.0×</span></div>
+				<div class="ladder"></div>
+				<div class="tricks"></div>
+				<p class="trickwhy">Toggle a technique.</p>
+				<div class="readout five">
+					<div><span class="k rSpd">1.0×</span><span class="l">speedup</span></div>
+					<div><span class="k rByte">—</span><span class="l">bytes / candidate</span></div>
+					<div><span class="k rBw">—</span><span class="l">achieved bandwidth</span></div>
+					<div><span class="k rAi">—</span><span class="l">FLOP / byte</span></div>
+					<div><span class="k rBound">—</span><span class="l">regime</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Gains compose multiplicatively, so the stack matters more than any one trick.
+				Fusion and precision are exact byte ratios you can derive from the shapes; the microarchitectural
+				factors are typical magnitudes for a bandwidth-bound gather kernel, not measurements. All of it is
+				chasing the same ceiling — a dot product does two FLOPs per element read, so arithmetic intensity sits
+				far below the ~10–20 FLOP/byte where an accelerator turns compute-bound. Stacked, this class of
+				optimization lands around an order of magnitude at the kernel level; end-to-end gains land nearer 2×
+				once the stages it never touches start to dominate.</p>
+		</section>
+
+		<section id="coalescing">
+			<h3 class="wh">Coalescing — why wider loads matter on a gather</h3>
+
+			<p class="note">Memory is served in fixed 32-byte sectors, not bytes. A warp's 32 lanes are coalesced
+				into the smallest set of sectors covering their addresses, and you pay for every sector fetched
+				whether you use it or not. Contiguous access wastes nothing. A random gather touches a different
+				sector per lane, so narrow loads throw most of the bus away.</p>
+			<div class="demo" id="w-coal">
+				<div class="qhead"><span>memory · 32B sectors · one warp</span><span class="coEff">—</span></div>
+				<div class="sectors"></div>
+				<div class="legend">
+					<span><span class="sw full"></span> fully used</span>
+					<span><span class="sw part"></span> fetched, partly wasted</span>
+					<span><span class="sw none"></span> not fetched</span>
+				</div>
+				<div class="picker">
+					<span class="pk">access pattern</span>
+					<button class="chip" type="button" data-pat="contig">contiguous</button>
+					<button class="chip" type="button" data-pat="stride">strided</button>
+					<button class="chip on" type="button" data-pat="gather">random gather</button>
+				</div>
+				<div class="picker">
+					<span class="pk">load width</span>
+					<button class="chip on" type="button" data-wid="4">4B</button>
+					<button class="chip" type="button" data-wid="8">8B</button>
+					<button class="chip" type="button" data-wid="16">16B</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rTx">—</span><span class="l">sectors fetched</span></div>
+					<div><span class="k rReq">—</span><span class="l">bytes wanted</span></div>
+					<div><span class="k rGot">—</span><span class="l">bytes moved</span></div>
+					<div><span class="k rEff">—</span><span class="l">bus efficiency</span></div>
+					<div><span class="k rLoads">—</span><span class="l">loads / 256B row</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">A gather cannot be made contiguous — the rows are wherever the index says. Widening
+				the load is the lever you actually have: same sectors touched, four times the useful bytes per one,
+				and a quarter of the load instructions to issue.</p>
+		</section>
+
+		<section id="reduction">
+			<h3 class="wh">Reduction — collapsing a row without touching memory</h3>
+
+			<p class="note">Once the row is in registers it still has to be summed. A shared-memory tree needs a
+				barrier at every level; register shuffles let lanes read each other directly, so the same log-depth
+				tree runs with no barriers and no shared memory at all.</p>
+			<div class="demo" id="w-red">
+				<div class="qhead"><span>32 lanes → 1 value</span><span class="redStep">step 0 / 5</span></div>
+				<div class="lanes"></div>
+				<div class="picker">
+					<span class="pk">strategy</span>
+					<button class="chip on" type="button" data-red="shfl">register shuffle</button>
+					<button class="chip" type="button" data-red="smem">shared memory</button>
+				</div>
+				<div class="wactions">
+					<button class="chip play" type="button">Run</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rActive">32</span><span class="l">active lanes</span></div>
+					<div><span class="k rDepth">5</span><span class="l">tree depth</span></div>
+					<div><span class="k rBar">—</span><span class="l">barriers</span></div>
+					<div><span class="k rSmem">—</span><span class="l">shared memory</span></div>
+					<div><span class="k rSum">—</span><span class="l">running total</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Both collapse 32 lanes in log₂32 = 5 steps. The difference is what each step costs:
+				a barrier serialises the whole block and the staging array burns shared memory that would otherwise
+				raise occupancy.</p>
+		</section>
+
+		<div class="group" id="selection">
+			<h2 class="grouph">Selection</h2>
+			<p class="groupnote">Narrowing millions of candidates to a handful, under a fixed latency budget.</p>
+		</div>
+
+		<section id="funnel">
+			<h3 class="wh">Retrieval Funnel</h3>
+
+			<p class="note">Millions of candidates in, a handful out. Both retrieval paths run in parallel, then
+				merge. Drag a stage — everything the early stages drop is GPU time never spent.</p>
+			<div class="demo">
+				<div class="stages" id="stages"></div>
+				<div class="readout">
+					<div><span class="k" id="fOut">—</span><span class="l">survivors</span></div>
+					<div><span class="k" id="fLat">—</span><span class="l">latency</span></div>
+					<div><span class="k" id="fGpu">—</span><span class="l">GPU share</span></div>
+					<div><span class="k" id="fVerdict">—</span><span class="l">100 ms budget</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Illustrative model. Per-stage cost is a fixed price per candidate examined.</p>
+		</section>
+
+		<section id="topk">
+			<h3 class="wh">Bounded Top-K Buffer</h3>
+
+			<p class="note">Ranked candidates arrive faster than the latency budget allows sorting. Keep the best K
+				— but pay neither a full sort nor a heap update per item. Admit into a buffer of m·K; when it
+				fills, partition once and keep the best K. The discarded half is overwritten, never reallocated.
+			</p>
+			<div class="demo" id="w-topk">
+				<div class="tkhead">
+					<span>buffer · <span class="tkCap">16</span> slots</span>
+					<span class="tkPhase">filling</span>
+				</div>
+				<div class="tkslots"></div>
+				<div class="tkbar">
+					<span>threshold <strong class="tkThr">—</strong></span>
+					<span>stream <strong class="tkPos">0 / 0</strong></span>
+				</div>
+				<div class="wctrls">
+					<label>capacity K <output class="kOut">8</output>
+						<input type="range" class="kIn" min="4" max="16" value="8" aria-label="Capacity K" />
+					</label>
+					<label>multiplier m <output class="mOut">2</output>
+						<input type="range" class="mIn" min="2" max="4" value="2" aria-label="Buffer multiplier" />
+					</label>
+				</div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rSeen">0</span><span class="l">seen</span></div>
+					<div><span class="k rAdm">0</span><span class="l">admitted</span></div>
+					<div><span class="k rRej">0</span><span class="l">fast-rejected</span></div>
+					<div><span class="k rComp">0</span><span class="l">partitions</span></div>
+					<div><span class="k rRate">—</span><span class="l">rejected in O(1)</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Raising m buys fewer partitions with linearly more memory. Worst case the
+				partition work amortizes to m/(m-1) per admitted item — 2.00 at m=2, 1.50 at m=3. In practice the
+				boundary suppresses admissions so hard that admits grow like K·ln(N/K), and partitions are rarer
+				still. Average O(N) overall, against O(N log K) for a heap.</p>
+		</section>
+
+		<section id="bloom">
+			<h3 class="wh">Bloom Filter</h3>
+
+			<p class="note">Learned retrieval optimises for relevance, but eligibility is a hard constraint — who
+				an advertiser will pay to reach, what budget is left, what policy allows. A model can happily
+				surface a candidate that fails all three. Checking exactly is expensive on high-cardinality
+				attributes, and an ineligible candidate that survives doesn't just waste compute: it occupies a
+				slot in a fixed-width funnel that an eligible one could have had. A Bloom filter answers
+				"definitely not present" in constant time and constant space, paying for it with false positives.
+				Cheap rejects up front, exact check only on what survives — the filter is never the authority.</p>
+			<div class="demo" id="w-bloom">
+				<div class="bits"></div>
+				<p class="bloomsay">Insert a few keys, then probe for one that was never added.</p>
+				<div class="picker">
+					<span class="pk">bits (m)</span>
+					<button class="chip" type="button" data-m="32">32</button>
+					<button class="chip on" type="button" data-m="64">64</button>
+					<button class="chip" type="button" data-m="128">128</button>
+				</div>
+				<div class="picker">
+					<span class="pk">hashes (k)</span>
+					<button class="chip" type="button" data-k="1">1</button>
+					<button class="chip" type="button" data-k="2">2</button>
+					<button class="chip on" type="button" data-k="3">3</button>
+					<button class="chip" type="button" data-k="5">5</button>
+					<button class="chip" type="button" data-k="8">8</button>
+				</div>
+				<div class="wactions">
+					<button class="chip bIns" type="button">Insert key</button>
+					<button class="chip bProbe" type="button">Probe absent key</button>
+					<button class="chip bReset" type="button">Reset</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rN">0</span><span class="l">keys inserted</span></div>
+					<div><span class="k rFill">0%</span><span class="l">bits set</span></div>
+					<div><span class="k rFprM">—</span><span class="l">false positive, measured</span></div>
+					<div><span class="k rFprT">—</span><span class="l">predicted</span></div>
+					<div><span class="k rOptK">—</span><span class="l">best k here</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">False positive rate is (1 − e^(−kn/m))^k, minimised at k = (m/n)·ln2. Measured
+				value samples 4,000 absent keys. More hashes help until they fill the array, then hurt — the reason a
+				filter has to be sized against the load it will actually see. The closed form assumes perfectly
+				independent hashing, so once the array saturates it drifts from what any concrete hash function
+				really does; showing both numbers is the point.</p>
+		</section>
+
+		<div class="group" id="distribution">
+			<h2 class="grouph">Distribution</h2>
+			<p class="groupnote">Splitting work across machines and sources without duplicating it, starving it, or losing it.</p>
+		</div>
+
+		<section id="slicing">
+			<h3 class="wh">Request Slicing</h3>
+
+			<p class="note">To spend more capacity on one request you split it across workers — and the split has to
+				be exactly disjoint. Slicing on index position is cheap, until replicas refresh on their own schedules
+				and the same item sits at a different position on each. Slices then overlap and gaps open: candidates
+				scored twice, others silently dropped. Slicing on a stable attribute of the item costs more and is
+				worth it, because a retrieval path that quietly loses candidates is worse than a slower one.</p>
+			<div class="demo" id="w-slice">
+				<div class="qhead"><span>one request · 96 items across workers</span><span class="slVerdict">—</span></div>
+				<div class="slgrid"></div>
+				<div class="legend">
+					<span><span class="sw ok1"></span> claimed once</span>
+					<span><span class="sw dup"></span> claimed twice — duplicated work</span>
+					<span><span class="sw gap"></span> claimed by nobody — dropped</span>
+				</div>
+				<div class="picker">
+					<span class="pk">slice by</span>
+					<button class="chip on" type="button" data-mode="pos">index position</button>
+					<button class="chip" type="button" data-mode="key">stable key</button>
+				</div>
+				<div class="picker">
+					<span class="pk">replicas stale</span>
+					<button class="chip on" type="button" data-skew="0">none</button>
+					<button class="chip" type="button" data-skew="25">some</button>
+					<button class="chip" type="button" data-skew="50">half</button>
+				</div>
+				<div class="picker">
+					<span class="pk">workers</span>
+					<button class="chip" type="button" data-w="4">4</button>
+					<button class="chip on" type="button" data-w="8">8</button>
+					<button class="chip" type="button" data-w="16">16</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rOnce">—</span><span class="l">scored once</span></div>
+					<div><span class="k rDup">—</span><span class="l">duplicated</span></div>
+					<div><span class="k rGap">—</span><span class="l">dropped</span></div>
+					<div><span class="k rWaste">—</span><span class="l">wasted work</span></div>
+					<div><span class="k rRecall">—</span><span class="l">recall</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Position-based slicing is correct only while every replica agrees on where an item
+				lives. Staggered index updates break that agreement, and the failure is silent — no error, just a
+				quieter funnel. Keying the split on an attribute that travels with the item makes the partition
+				replica-independent, which is the property that actually matters.</p>
+		</section>
+
+		<section id="iwrr">
+			<h3 class="wh">Interleaved Weighted Round Robin</h3>
+
+			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
+				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape
+				of running several retrieval models in parallel and deciding how much of the result each one owns.
+			</p>
+			<div class="demo" id="w-iwrr">
+				<div class="iwrr">
+					<div class="qs"></div>
+					<div>
+						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
+						<div class="chips out"></div>
+					</div>
+				</div>
+				<div class="wctrls"></div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+				</div>
+				<div class="readout">
+					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
+					<div><span class="k rMix">—</span><span class="l">output mix</span></div>
+					<div><span class="k rRatio">—</span><span class="l">target ratio</span></div>
+					<div><span class="k rRound">1</span><span class="l">round</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Deterministic, and order-preserving within each queue.</p>
+		</section>
+
+		<section id="blender">
+			<h3 class="wh">Unique-Value Blender</h3>
+
+			<p class="note">Supplementary sources keep surfacing candidates the main queue already has. Naive dedup
+				credits whoever emits first. This one remembers main membership and <em>reattributes</em> the
+				duplicate, so a supplementary slot is only spent on genuinely new supply. The catch: main is a
+				bounded top-K filled on the fly, so membership is only knowable inside the window.</p>
+			<div class="demo" id="w-uvb">
+				<div class="iwrr">
+					<div class="qs"></div>
+					<div>
+						<div class="qhead"><span>output</span><span class="roundTag">round 1</span></div>
+						<div class="chips out"></div>
+						<div class="legend">
+							<span><span class="it a">12</span> main</span>
+							<span><span class="it a re">12</span> reattributed</span>
+							<span><span class="it b miss">12</span> outside window</span>
+							<span><span class="it b gone">12</span> dropped</span>
+						</div>
+					</div>
+				</div>
+				<div class="wctrls"></div>
+				<div class="wactions">
+					<button class="chip play" type="button">Play</button>
+					<button class="chip step" type="button">Step</button>
+					<button class="chip reset" type="button">Reset</button>
+					<label>capacity <output class="capOut">12</output>
+						<input type="range" class="cap" min="4" max="24" value="12" aria-label="Output capacity" />
+					</label>
+				</div>
+				<div class="readout five">
+					<div><span class="k rEmit">0</span><span class="l">emitted</span></div>
+					<div><span class="k rRe">0</span><span class="l">reattributed</span></div>
+					<div><span class="k rUv">—</span><span class="l">unique value</span></div>
+					<div><span class="k rMiss">0</span><span class="l">outside window</span></div>
+					<div><span class="k rMem">0</span><span class="l">resident / 2K</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Reattribution costs the supplementary source its slot but not its credit. Items
+				evicted from the bounded window before a supplementary match arrives cannot be reattributed — those
+				are counted separately.</p>
+		</section>
+	</main>
+
+	<footer class="wrap">
+		<p><a href="index.html">&larr; Back</a> · Jason Chen</p>
+	</footer>
+
+	<script src="js/app.js"></script>
+</body>
+
+</html>
