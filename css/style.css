@@ -807,6 +807,136 @@ figcaption strong {
 	font-weight: 600;
 }
 
+/* Bloom filter */
+.picker {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 12px;
+}
+
+.pk {
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+	min-width: 96px;
+}
+
+.bits {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 3px;
+}
+
+.bit {
+	width: 18px;
+	height: 18px;
+	border-radius: 3px;
+	border: 1px solid var(--line);
+	background: var(--bg);
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.bit.set {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+
+.bit.touch {
+	outline: 2px solid var(--ink);
+	outline-offset: 1px;
+}
+
+.bit.hitfp {
+	background: var(--warn);
+	border-color: var(--warn);
+}
+
+.bit.clear {
+	border-color: var(--ok);
+	border-width: 2px;
+}
+
+.bloomsay {
+	margin: 14px 0 0;
+	font-size: 14px;
+	color: var(--muted);
+	min-height: 2.6em;
+}
+
+.bloomsay strong {
+	color: var(--ink);
+	font-weight: 600;
+}
+
+.bloomsay .bad {
+	color: var(--warn);
+}
+
+.bloomsay .good {
+	color: var(--ok);
+}
+
+/* Request slicing */
+.slgrid {
+	display: grid;
+	grid-template-columns: repeat(24, 1fr);
+	gap: 3px;
+}
+
+.cell {
+	aspect-ratio: 1;
+	border-radius: 3px;
+	border: 1px solid var(--line);
+	background: var(--bg);
+}
+
+.cell.ok1 {
+	background: color-mix(in srgb, var(--accent) 55%, transparent);
+	border-color: var(--accent);
+}
+
+.cell.dup {
+	background: var(--warn);
+	border-color: var(--warn);
+}
+
+.cell.gap {
+	background: transparent;
+	border: 2px dashed var(--warn);
+}
+
+.sw {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+	flex: none;
+}
+
+.sw.ok1 {
+	background: color-mix(in srgb, var(--accent) 55%, transparent);
+	border: 1px solid var(--accent);
+}
+
+.sw.dup {
+	background: var(--warn);
+}
+
+.sw.gap {
+	border: 2px dashed var(--warn);
+	background: transparent;
+}
+
+.slVerdict.bad {
+	color: var(--warn);
+}
+
+.slVerdict.good {
+	color: var(--ok);
+}
+
 /* Selected work */
 .work {
 	margin: 0;

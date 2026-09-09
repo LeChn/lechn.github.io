@@ -302,6 +302,98 @@
 		</section>
 
 		<section>
+			<h2>Bloom Filter</h2>
+			<p class="note">Learned retrieval optimises for relevance, but eligibility is a hard constraint — who
+				an advertiser will pay to reach, what budget is left, what policy allows. A model can happily
+				surface a candidate that fails all three. Checking exactly is expensive on high-cardinality
+				attributes, and an ineligible candidate that survives doesn't just waste compute: it occupies a
+				slot in a fixed-width funnel that an eligible one could have had. A Bloom filter answers
+				"definitely not present" in constant time and constant space, paying for it with false positives.
+				Cheap rejects up front, exact check only on what survives — the filter is never the authority.</p>
+			<div class="demo" id="w-bloom">
+				<div class="bits"></div>
+				<p class="bloomsay">Insert a few keys, then probe for one that was never added.</p>
+				<div class="picker">
+					<span class="pk">bits (m)</span>
+					<button class="chip" type="button" data-m="32">32</button>
+					<button class="chip on" type="button" data-m="64">64</button>
+					<button class="chip" type="button" data-m="128">128</button>
+				</div>
+				<div class="picker">
+					<span class="pk">hashes (k)</span>
+					<button class="chip" type="button" data-k="1">1</button>
+					<button class="chip" type="button" data-k="2">2</button>
+					<button class="chip on" type="button" data-k="3">3</button>
+					<button class="chip" type="button" data-k="5">5</button>
+					<button class="chip" type="button" data-k="8">8</button>
+				</div>
+				<div class="wactions">
+					<button class="chip bIns" type="button">Insert key</button>
+					<button class="chip bProbe" type="button">Probe absent key</button>
+					<button class="chip bReset" type="button">Reset</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rN">0</span><span class="l">keys inserted</span></div>
+					<div><span class="k rFill">0%</span><span class="l">bits set</span></div>
+					<div><span class="k rFprM">—</span><span class="l">false positive, measured</span></div>
+					<div><span class="k rFprT">—</span><span class="l">predicted</span></div>
+					<div><span class="k rOptK">—</span><span class="l">best k here</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">False positive rate is (1 − e^(−kn/m))^k, minimised at k = (m/n)·ln2. Measured
+				value samples 4,000 absent keys. More hashes help until they fill the array, then hurt — the reason a
+				filter has to be sized against the load it will actually see. The closed form assumes perfectly
+				independent hashing, so once the array saturates it drifts from what any concrete hash function
+				really does; showing both numbers is the point.</p>
+		</section>
+
+		<section>
+			<h2>Request Slicing</h2>
+			<p class="note">To spend more capacity on one request you split it across workers — and the split has to
+				be exactly disjoint. Slicing on index position is cheap, until replicas refresh on their own schedules
+				and the same item sits at a different position on each. Slices then overlap and gaps open: candidates
+				scored twice, others silently dropped. Slicing on a stable attribute of the item costs more and is
+				worth it, because a retrieval path that quietly loses candidates is worse than a slower one.</p>
+			<div class="demo" id="w-slice">
+				<div class="qhead"><span>one request · 96 items across workers</span><span class="slVerdict">—</span></div>
+				<div class="slgrid"></div>
+				<div class="legend">
+					<span><span class="sw ok1"></span> claimed once</span>
+					<span><span class="sw dup"></span> claimed twice — duplicated work</span>
+					<span><span class="sw gap"></span> claimed by nobody — dropped</span>
+				</div>
+				<div class="picker">
+					<span class="pk">slice by</span>
+					<button class="chip on" type="button" data-mode="pos">index position</button>
+					<button class="chip" type="button" data-mode="key">stable key</button>
+				</div>
+				<div class="picker">
+					<span class="pk">replicas stale</span>
+					<button class="chip on" type="button" data-skew="0">none</button>
+					<button class="chip" type="button" data-skew="25">some</button>
+					<button class="chip" type="button" data-skew="50">half</button>
+				</div>
+				<div class="picker">
+					<span class="pk">workers</span>
+					<button class="chip" type="button" data-w="4">4</button>
+					<button class="chip on" type="button" data-w="8">8</button>
+					<button class="chip" type="button" data-w="16">16</button>
+				</div>
+				<div class="readout five">
+					<div><span class="k rOnce">—</span><span class="l">scored once</span></div>
+					<div><span class="k rDup">—</span><span class="l">duplicated</span></div>
+					<div><span class="k rGap">—</span><span class="l">dropped</span></div>
+					<div><span class="k rWaste">—</span><span class="l">wasted work</span></div>
+					<div><span class="k rRecall">—</span><span class="l">recall</span></div>
+				</div>
+			</div>
+			<p class="disclaimer">Position-based slicing is correct only while every replica agrees on where an item
+				lives. Staggered index updates break that agreement, and the failure is silent — no error, just a
+				quieter funnel. Keying the split on an attribute that travels with the item makes the partition
+				replica-independent, which is the property that actually matters.</p>
+		</section>
+
+		<section>
 			<h2>Interleaved Weighted Round Robin</h2>
 			<p class="note">Weighted sources, one ordered output. In round <em>r</em>, every queue with weight ≥ r
 				emits once — so weight sets share, not position, and nothing arrives in a burst. This is the shape

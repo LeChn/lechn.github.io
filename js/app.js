@@ -569,6 +569,202 @@
 
 	makeFuse({ root: '#w-fuse' });
 
+	/* Bloom filter ---------------------------------------------------------
+	   k hashes per key, all set on insert, all tested on probe. A clear bit
+	   proves absence; all-set only suggests presence. Measured rate is
+	   sampled against absent keys and compared to (1 - e^(-kn/m))^k. */
+	function makeBloom(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var qa = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+		var M = 64, KH = 3, bits = [], n = 0, nextKey = 1;
+
+		function hashes(key, m, k) {
+			// 32-bit throughout: Math.imul + >>>0. Plain * and ^ would overflow
+			// past 2^53 and silently destroy the low bits that % m depends on.
+			var out = [], h = Math.imul(key, 2654435761) >>> 0;
+			for (var i = 0; i < k; i++) {
+				h ^= h >>> 15;
+				h = Math.imul(h, 2246822519) >>> 0;
+				h ^= h >>> 13;
+				h = Math.imul(h, 3266489917) >>> 0;
+				h ^= h >>> 16;
+				out.push((h >>> 0) % m);   // ^= yields signed int32; % would go negative
+			}
+			return out;
+		}
+
+		function reset() {
+			bits = new Array(M).fill(false);
+			n = 0; nextKey = 1;
+			q('.bloomsay').textContent = 'Insert a few keys, then probe for one that was never added.';
+			render();
+		}
+
+		function fill() { return bits.filter(Boolean).length; }
+
+		function measuredFpr() {
+			if (n === 0) { return 0; }
+			var trials = 4000, fp = 0;
+			for (var i = 0; i < trials; i++) {
+				var key = 1000000 + i;                  // guaranteed absent
+				var hs = hashes(key, M, KH), all = true;
+				for (var j = 0; j < hs.length; j++) { if (!bits[hs[j]]) { all = false; break; } }
+				if (all) { fp++; }
+			}
+			return fp / trials;
+		}
+
+		function render(touch, mode) {
+			q('.bits').innerHTML = bits.map(function (b, i) {
+				var c = 'bit' + (b ? ' set' : '');
+				if (touch && touch.indexOf(i) >= 0) {
+					c += ' touch';
+					if (mode === 'fp') { c += ' hitfp'; }
+					if (mode === 'miss' && !b) { c += ' clear'; }
+				}
+				return '<span class="' + c + '"></span>';
+			}).join('');
+
+			var f = fill(), mf = measuredFpr();
+			var tf = n === 0 ? 0 : Math.pow(1 - Math.exp(-KH * n / M), KH);
+			q('.rN').textContent = n;
+			q('.rFill').textContent = Math.round(f / M * 100) + '%';
+			q('.rFprM').textContent = (mf * 100).toFixed(1) + '%';
+			q('.rFprT').textContent = (tf * 100).toFixed(1) + '%';
+			q('.rOptK').textContent = n === 0 ? '—' : Math.max(1, Math.round(M / n * Math.LN2));
+		}
+
+		q('.bIns').addEventListener('click', function () {
+			var hs = hashes(nextKey++, M, KH);
+			hs.forEach(function (i) { bits[i] = true; });
+			n++;
+			q('.bloomsay').innerHTML = '<strong>Inserted</strong> — set ' + KH + ' bits. Collisions with earlier keys are expected and are exactly what creates false positives later.';
+			render(hs, 'ins');
+		});
+
+		q('.bProbe').addEventListener('click', function () {
+			var key = 900000 + Math.floor(Math.random() * 100000);
+			var hs = hashes(key, M, KH), all = hs.every(function (i) { return bits[i]; });
+			q('.bloomsay').innerHTML = all
+				? '<strong class="bad">False positive</strong> — every probed bit happens to be set by other keys, so the filter says "maybe". The exact check downstream is what rejects it.'
+				: '<strong class="good">Correctly rejected</strong> — at least one probed bit is clear, which is proof the key was never inserted. No exact check needed.';
+			render(hs, all ? 'fp' : 'miss');
+		});
+
+		q('.bReset').addEventListener('click', reset);
+
+		qa('.picker').forEach(function (row) {
+			row.addEventListener('click', function (e) {
+				var b = e.target.closest('.chip');
+				if (!b) { return; }
+				Array.prototype.slice.call(row.querySelectorAll('.chip'))
+					.forEach(function (o) { o.classList.remove('on'); });
+				b.classList.add('on');
+				if (b.dataset.m) { M = +b.dataset.m; }
+				if (b.dataset.k) { KH = +b.dataset.k; }
+				reset();
+			});
+		});
+
+		reset();
+	}
+
+	makeBloom({ root: '#w-bloom' });
+
+	/* Request slicing ------------------------------------------------------
+	   Splitting one request across workers only works if the partition is
+	   disjoint on every replica. Slicing by index position is cheap but
+	   replica-dependent: staggered index refreshes move an item, so two
+	   workers can claim it or none can. Slicing on a stable key is
+	   replica-independent and therefore actually disjoint. */
+	function makeSlice(cfg) {
+		var root = document.querySelector(cfg.root);
+		if (!root) { return; }
+		var q = function (s) { return root.querySelector(s); };
+		var qa = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+		var N = 96, W = 8, MODE = 'pos', SKEW = 0;
+
+		function mix(x) {
+			x = Math.imul(x, 2654435761) >>> 0;
+			x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0;
+			x ^= x >>> 13; x = Math.imul(x, 3266489917) >>> 0;
+			return (x ^ (x >>> 16)) >>> 0;
+		}
+
+		// Exactly round(W * SKEW%) replicas are stale, spread deterministically.
+		// Sampling per-worker instead would give wrong counts at these small W.
+		function staleSet() {
+			var k = Math.round(W * SKEW / 100), order = [], set = {};
+			for (var w = 0; w < W; w++) { order.push([w, mix(w * 977)]); }
+			order.sort(function (a, b) { return a[1] - b[1]; });
+			for (var i = 0; i < k; i++) { set[order[i][0]] = 1; }
+			return set;
+		}
+
+		// Position on a stale replica differs: the index moved the item.
+		function posOn(item, stale) { return stale ? (item * 7 + 13) % N : item; }
+
+		function claims(item, stale) {
+			var c = 0;
+			for (var w = 0; w < W; w++) {
+				if (MODE === 'key') {
+					// Key travels with the item, so every replica agrees.
+					if (mix(item) % W === w) { c++; }
+				} else {
+					// Worker w was told to cover a position range, but resolves
+					// position against its own index view.
+					var lo = Math.floor(w * N / W), hi = Math.floor((w + 1) * N / W);
+					var p = posOn(item, !!stale[w]);
+					if (p >= lo && p < hi) { c++; }
+				}
+			}
+			return c;
+		}
+
+		function render() {
+			var once = 0, dup = 0, gap = 0, work = 0, html = '', stale = staleSet();
+			for (var i = 0; i < N; i++) {
+				var c = claims(i, stale);
+				work += c;
+				var cls = c === 1 ? 'ok1' : (c === 0 ? 'gap' : 'dup');
+				if (c === 1) { once++; } else if (c === 0) { gap++; } else { dup++; }
+				html += '<span class="cell ' + cls + '"></span>';
+			}
+			q('.slgrid').innerHTML = html;
+			q('.rOnce').textContent = once;
+			q('.rDup').textContent = dup;
+			q('.rGap').textContent = gap;
+			// Work done is total claims; only one claim per item is useful.
+			var useful = N - gap;
+			q('.rWaste').textContent = work > 0 ? Math.round((work - useful) / work * 100) + '%' : '0%';
+			q('.rRecall').textContent = Math.round(useful / N * 100) + '%';
+			var v = q('.slVerdict'), clean = (dup === 0 && gap === 0);
+			v.textContent = clean ? 'partition is disjoint' : 'partition is broken';
+			v.className = 'slVerdict ' + (clean ? 'good' : 'bad');
+		}
+
+		qa('.picker').forEach(function (row) {
+			row.addEventListener('click', function (e) {
+				var b = e.target.closest('.chip');
+				if (!b) { return; }
+				Array.prototype.slice.call(row.querySelectorAll('.chip'))
+					.forEach(function (o) { o.classList.remove('on'); });
+				b.classList.add('on');
+				if (b.dataset.mode) { MODE = b.dataset.mode; }
+				if (b.dataset.skew) { SKEW = +b.dataset.skew; }
+				if (b.dataset.skew === '0') { SKEW = 0; }
+				if (b.dataset.w) { W = +b.dataset.w; }
+				render();
+			});
+		});
+
+		render();
+	}
+
+	makeSlice({ root: '#w-slice' });
+
 	/* Selected work ------------------------------------------------------ */
 	$$('.wtoggle').forEach(function (t) {
 		t.addEventListener('click', function () {
