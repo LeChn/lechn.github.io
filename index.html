@@ -175,38 +175,48 @@
 
 		<section>
 			<h2>Background</h2>
-			<div class="tl">
-				<div class="tlticks">
-					<span style="left:18.07%">2013</span>
-					<span style="left:42.17%">2017</span>
-					<span style="left:66.27%">2021</span>
-					<span style="left:84.34%">2024</span>
+			<div class="road">
+				<div class="rlabels">
+					<span class="rname" style="left:9.04%">Shanghai</span>
+					<span class="rname" style="left:30.12%">Buchholz</span>
+					<span class="rname" style="left:54.22%">University of Florida</span>
+					<span class="rname" style="left:83.13%">Meta</span>
 				</div>
-				<div class="tlchart">
-					<div class="tlgrid">
-					<span style="left:18.07%"></span>
-					<span style="left:42.17%"></span>
-					<span style="left:66.27%"></span>
-					<span style="left:84.34%"></span>
-					</div>
-					<div class="tlrow">
-						<span class="tlbar sh fade" style="--l:0.00%;--w:18.07%"><b>Shanghai</b></span>
-						<span class="tlbar hs" style="--l:18.07%;--w:24.10%"><b>Buchholz</b></span>
-						<span class="tlbar uf" style="--l:42.17%;--w:24.10%"><b>University of Florida</b></span>
-						<span class="tlbar meta" style="--l:66.27%;--w:33.73%"><b>Meta</b></span>
-					</div>
-					<div class="tlrow">
-						<span class="tlbar gt" style="--l:72.29%;--w:12.05%"><b>Georgia Tech</b></span>
-					</div>
+				<svg class="rsvg" viewBox="0 0 1000 116" role="img"
+					aria-label="Timeline as a commit graph: Shanghai until 2013, Buchholz 2013 to 2017, University of Florida 2017 to 2021, Meta 2021 to present, with a Georgia Tech masters branching off in 2022 and merging back in 2024.">
+					<defs>
+						<linearGradient id="fadeIn" gradientUnits="userSpaceOnUse" x1="0" x2="180.7">
+							<stop offset="0" stop-color="currentColor" stop-opacity="0" />
+							<stop offset="1" stop-color="currentColor" stop-opacity="1" />
+						</linearGradient>
+					</defs>
+					<path class="casing" d="M0,40.0 H1000.0" vector-effect="non-scaling-stroke" />
+					<path class="casing" d="M722.9,40.0 C742.9,40.0 742.9,90.0 762.9,90.0 H803.4 C823.4,90.0 823.4,40.0 843.4,40.0" vector-effect="non-scaling-stroke" />
+					<path class="lane sh" d="M0.0,40.0 H180.7" vector-effect="non-scaling-stroke" />
+					<path class="lane hs" d="M180.7,40.0 H421.7" vector-effect="non-scaling-stroke" />
+					<path class="lane uf" d="M421.7,40.0 H662.7" vector-effect="non-scaling-stroke" />
+					<path class="lane meta" d="M662.7,40.0 H1000.0" vector-effect="non-scaling-stroke" />
+					<path class="lane gt" d="M722.9,40.0 C742.9,40.0 742.9,90.0 762.9,90.0 H803.4 C823.4,90.0 823.4,40.0 843.4,40.0" vector-effect="non-scaling-stroke" />
+					<path class="markings" d="M0,40.0 H1000.0" vector-effect="non-scaling-stroke" />
+					<path class="markings" d="M722.9,40.0 C746.9,40.0 759.1,86.0 783.1,86.0 C807.1,86.0 819.4,40.0 843.4,40.0" vector-effect="non-scaling-stroke" />
+					<circle class="commit hs" cx="180.7" cy="40.0" r="10" vector-effect="non-scaling-stroke" />
+					<circle class="commit uf" cx="421.7" cy="40.0" r="10" vector-effect="non-scaling-stroke" />
+					<circle class="commit meta" cx="662.7" cy="40.0" r="10" vector-effect="non-scaling-stroke" />
+					<circle class="commit meta" cx="722.9" cy="40.0" r="10" vector-effect="non-scaling-stroke" />
+					<circle class="commit meta" cx="843.4" cy="40.0" r="10" vector-effect="non-scaling-stroke" />
+					<circle class="commit gt" cx="783.1" cy="90.0" r="10" vector-effect="non-scaling-stroke" />
+				</svg>
+				<div class="ryears">
+					<span class="ryear" style="left:18.07%">2013</span>
+					<span class="ryear" style="left:42.17%">2017</span>
+					<span class="ryear" style="left:66.27%">2021</span>
 				</div>
-				<ul class="tlkey">
-					<li><i class="k-meta"></i><strong>Meta</strong><span>Staff Software Engineer, Retrieval Platform</span><em>2021 — present</em></li>
-					<li><i class="k-gt"></i><strong>Georgia Tech</strong><span>M.S. Computer Science, part-time while at Meta</span><em>2022 — 2024</em></li>
-					<li><i class="k-uf"></i><strong>University of Florida</strong><span>B.S. Computer Science, Mathematics, Statistics</span><em>2017 — 2021</em></li>
-					<li><i class="k-hs"></i><strong>Buchholz High School</strong><span>Competitive math · USAMO finalist</span><em>2013 — 2017</em></li>
-					<li><i class="k-sh"></i><strong>Shanghai</strong><span>Before moving to the US</span><em>through 2013</em></li>
-				</ul>
+				<div class="rgemrow">
+					<span class="rgemlab" style="left:78.31%">Georgia Tech M.S. <em>2022&ndash;24</em></span>
+				</div>
 			</div>
+			<p class="rnote">B.S. Computer Science, Mathematics and Statistics · M.S. taken part-time while at
+				Meta · USAMO finalist · moved from Shanghai in 2013</p>
 		</section>
 	</main>
 

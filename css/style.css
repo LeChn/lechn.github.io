@@ -1216,18 +1216,115 @@ figcaption strong {
 	background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-/* Background: two full-thickness lanes on a shared year axis */
-.tl {
-	margin-top: 24px;
+/* Background: a commit graph drawn as a road */
+.road {
+	margin-top: 30px;
 }
 
-.tlticks {
+.rlabels,
+.ryears,
+.rgemrow {
 	position: relative;
-	height: 14px;
-	margin-bottom: 6px;
 }
 
-.tlticks span {
+.rlabels {
+	height: 18px;
+	margin-bottom: 2px;
+}
+
+.rname {
+	position: absolute;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--ink);
+}
+
+.rsvg {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;
+}
+
+/* Road build-up: dark casing, coloured surface, dashed centre markings. */
+.casing {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: 21;
+	stroke-linecap: round;
+	opacity: 0.14;
+}
+
+.lane {
+	fill: none;
+	stroke-width: 14;
+	stroke-linecap: butt;
+}
+
+.lane.sh {
+	color: var(--muted);
+	stroke: url(#fadeIn);
+	stroke-linecap: round;
+}
+
+.lane.hs {
+	stroke: var(--sc);
+}
+
+.lane.uf {
+	stroke: var(--sb);
+}
+
+.lane.meta {
+	stroke: var(--accent);
+	stroke-linecap: round;
+}
+
+.lane.gt {
+	stroke: var(--sd);
+	stroke-linecap: round;
+}
+
+.markings {
+	fill: none;
+	stroke: var(--bg);
+	stroke-width: 2.5;
+	stroke-dasharray: 11 15;
+	stroke-linecap: round;
+	opacity: 0.85;
+}
+
+/* Commits sit on the road where the path changes. */
+.commit {
+	fill: var(--bg);
+	stroke-width: 3;
+}
+
+.commit.hs {
+	stroke: var(--sc);
+}
+
+.commit.uf {
+	stroke: var(--sb);
+}
+
+.commit.meta {
+	stroke: var(--accent);
+}
+
+.commit.gt {
+	stroke: var(--sd);
+}
+
+.ryears {
+	height: 15px;
+	margin-top: 2px;
+}
+
+.ryear {
 	position: absolute;
 	transform: translateX(-50%);
 	font-family: var(--mono);
@@ -1235,140 +1332,32 @@ figcaption strong {
 	color: var(--muted);
 }
 
-.tlchart {
-	position: relative;
-	display: grid;
-	gap: 6px;
+.rgemrow {
+	height: 16px;
+	margin-top: 2px;
 }
 
-/* Gridlines run through both lanes so a bar edge visibly lands on its year. */
-.tlgrid {
+.rgemlab {
 	position: absolute;
-	inset: 0;
-	pointer-events: none;
-}
-
-.tlgrid span {
-	position: absolute;
-	top: -4px;
-	bottom: -4px;
-	width: 1px;
-	background: var(--line);
-}
-
-.tlrow {
-	position: relative;
-	height: 26px;
-}
-
-.tlbar {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: var(--l);
-	width: var(--w);
-	border-radius: 5px;
-	display: flex;
-	align-items: center;
-	overflow: hidden;
-}
-
-.tlbar b {
-	font-weight: 500;
-	font-size: 11px;
-	letter-spacing: 0.01em;
-	color: #fff;
-	padding: 0 10px;
+	transform: translateX(-50%);
 	white-space: nowrap;
-}
-
-.tlbar.fade {
-	-webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
-	mask-image: linear-gradient(90deg, transparent, #000 55%);
-}
-
-.tlbar.fade b {
-	margin-left: auto;
-}
-
-.tlbar.sh {
-	background: var(--muted);
-}
-
-.tlbar.hs {
-	background: var(--sc);
-}
-
-.tlbar.uf {
-	background: var(--sb);
-}
-
-.tlbar.meta {
-	background: var(--accent);
-}
-
-.tlbar.gt {
-	background: var(--sd);
-}
-
-.tlkey {
-	list-style: none;
-	margin: 22px 0 0;
-	padding: 0;
-	display: grid;
-	gap: 11px;
-}
-
-.tlkey li {
-	display: grid;
-	grid-template-columns: 12px 176px 1fr auto;
-	gap: 12px;
-	align-items: baseline;
-	font-size: 14px;
-}
-
-.tlkey i {
-	width: 10px;
-	height: 10px;
-	border-radius: 3px;
-	align-self: center;
-}
-
-.k-meta {
-	background: var(--accent);
-}
-
-.k-gt {
-	background: var(--sd);
-}
-
-.k-uf {
-	background: var(--sb);
-}
-
-.k-hs {
-	background: var(--sc);
-}
-
-.k-sh {
-	background: var(--muted);
-}
-
-.tlkey strong {
+	font-size: 12px;
 	font-weight: 600;
-	letter-spacing: -0.01em;
+	color: var(--sd);
 }
 
-.tlkey span {
-	color: var(--muted);
-}
-
-.tlkey em {
+.rgemlab em {
 	font-style: normal;
 	font-family: var(--mono);
-	font-size: 11px;
+	font-size: 10px;
+	font-weight: 400;
+	opacity: 0.8;
+}
+
+.rnote {
+	margin: 20px 0 0;
+	font-size: 14px;
 	color: var(--muted);
-	white-space: nowrap;
 }
 
 /* Systems: sticky group nav */
@@ -1559,18 +1548,12 @@ footer p {
 		min-height: 0;
 	}
 
-	.tlkey li {
-		grid-template-columns: 12px 1fr;
-		gap: 4px 12px;
+	.rname {
+		font-size: 11px;
 	}
 
-	.tlbar b {
-		display: none;
-	}
-
-	.tlkey span,
-	.tlkey em {
-		grid-column: 2;
+	.rgemlab {
+		font-size: 11px;
 	}
 
 	.readout,
