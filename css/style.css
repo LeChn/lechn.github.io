@@ -1216,80 +1216,159 @@ figcaption strong {
 	background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-/* Background: overlapping timeline */
+/* Background: two full-thickness lanes on a shared year axis */
 .tl {
-	margin-top: 26px;
+	margin-top: 24px;
 }
 
-.tlrow {
-	display: grid;
-	grid-template-columns: 210px 1fr 116px;
-	gap: 18px;
-	align-items: center;
-	padding: 9px 0;
+.tlticks {
+	position: relative;
+	height: 14px;
+	margin-bottom: 6px;
 }
 
-.tlhead {
-	padding-bottom: 4px;
-}
-
-.tlaxis {
-	display: flex;
-	justify-content: space-between;
+.tlticks span {
+	position: absolute;
+	transform: translateX(-50%);
 	font-family: var(--mono);
 	font-size: 10px;
 	color: var(--muted);
 }
 
-.tlname strong {
-	display: block;
-	font-size: 15px;
-	font-weight: 600;
-}
-
-.tlname span {
-	display: block;
-	font-size: 12px;
-	color: var(--muted);
-	line-height: 1.4;
-	margin-top: 1px;
-}
-
-.tltrack {
+.tlchart {
 	position: relative;
-	height: 12px;
-	border-radius: 6px;
-	background: var(--panel);
-	border: 1px solid var(--line);
+	display: grid;
+	gap: 6px;
+}
+
+/* Gridlines run through both lanes so a bar edge visibly lands on its year. */
+.tlgrid {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.tlgrid span {
+	position: absolute;
+	top: -4px;
+	bottom: -4px;
+	width: 1px;
+	background: var(--line);
+}
+
+.tlrow {
+	position: relative;
+	height: 26px;
 }
 
 .tlbar {
 	position: absolute;
-	top: -1px;
-	bottom: -1px;
+	top: 0;
+	bottom: 0;
 	left: var(--l);
 	width: var(--w);
-	border-radius: 6px;
-	background: color-mix(in srgb, var(--accent) 55%, transparent);
-	border: 1px solid var(--accent);
+	border-radius: 5px;
+	display: flex;
+	align-items: center;
+	overflow: hidden;
 }
 
-.tlbar.now {
+.tlbar b {
+	font-weight: 500;
+	font-size: 11px;
+	letter-spacing: 0.01em;
+	color: #fff;
+	padding: 0 10px;
+	white-space: nowrap;
+}
+
+.tlbar.fade {
+	-webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
+	mask-image: linear-gradient(90deg, transparent, #000 55%);
+}
+
+.tlbar.fade b {
+	margin-left: auto;
+}
+
+.tlbar.sh {
+	background: var(--muted);
+}
+
+.tlbar.hs {
+	background: var(--sc);
+}
+
+.tlbar.uf {
+	background: var(--sb);
+}
+
+.tlbar.meta {
 	background: var(--accent);
 }
 
-.tlyears {
-	font-family: var(--mono);
-	font-size: 11px;
-	color: var(--muted);
-	text-align: right;
+.tlbar.gt {
+	background: var(--sd);
 }
 
-.cred {
-	margin: 18px 0 0;
+.tlkey {
+	list-style: none;
+	margin: 22px 0 0;
+	padding: 0;
+	display: grid;
+	gap: 11px;
+}
+
+.tlkey li {
+	display: grid;
+	grid-template-columns: 12px 176px 1fr auto;
+	gap: 12px;
+	align-items: baseline;
+	font-size: 14px;
+}
+
+.tlkey i {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	align-self: center;
+}
+
+.k-meta {
+	background: var(--accent);
+}
+
+.k-gt {
+	background: var(--sd);
+}
+
+.k-uf {
+	background: var(--sb);
+}
+
+.k-hs {
+	background: var(--sc);
+}
+
+.k-sh {
+	background: var(--muted);
+}
+
+.tlkey strong {
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.tlkey span {
+	color: var(--muted);
+}
+
+.tlkey em {
+	font-style: normal;
 	font-family: var(--mono);
 	font-size: 11px;
 	color: var(--muted);
+	white-space: nowrap;
 }
 
 /* Systems: sticky group nav */
@@ -1480,18 +1559,18 @@ footer p {
 		min-height: 0;
 	}
 
-	.tlrow {
-		grid-template-columns: 1fr 108px;
-		gap: 6px 12px;
-		padding: 12px 0;
+	.tlkey li {
+		grid-template-columns: 12px 1fr;
+		gap: 4px 12px;
 	}
 
-	.tltrack {
-		grid-column: 1 / -1;
+	.tlbar b {
+		display: none;
 	}
 
-	.tlhead .tlaxis {
-		grid-column: 1 / -1;
+	.tlkey span,
+	.tlkey em {
+		grid-column: 2;
 	}
 
 	.readout,
